@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as rcv from "../utils/rcv";
 
 export function newGlobal() {
     vscode.window.showInformationMessage("Create new global item — implement me!");
@@ -30,6 +31,7 @@ export function newCV() {
 
 export async function previewCvSidebar(str: string) {
     vscode.window.showInformationMessage(`Previewing CV sidebar... (WIP) ${str}`);
+    rcv.previewFileAsCV(str);
 }
 
 export async function sendFeedback() {
