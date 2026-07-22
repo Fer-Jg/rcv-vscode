@@ -2,7 +2,7 @@ const vscode = acquireVsCodeApi();
 
 // Replace this with real CV/project data from the extension (e.g. via
 // webview.onDidReceiveMessage / postMessage from the extension host).
-const cvs = ["Cv 1", "Cv 2", "Cv 3"];
+const cvs = ["CV 1", "CV 2", "CV 3"];
 let selectedCv = cvs[0];
 
 const listEl = document.getElementById("cv-list");
@@ -33,9 +33,19 @@ document.getElementById("feedback-link").addEventListener("click", (e) => {
     vscode.postMessage({ command: "feedbackClicked" });
 });
 
-document.getElementsByClassName("cv-item").forEach((item) => {
-    item.addEventListener("click", () => {
-        const cvName = item.textContent;
-        vscode.postMessage({ command: "selectCV", cv: cvName });
-    });
+// CVs section actions
+document.getElementById("cvs-reload-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "reloadCvs" });
+});
+
+document.getElementById("cvs-search-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "searchCvs" });
+});
+
+document.getElementById("cvs-filter-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "filterCvs" });
+});
+
+document.getElementById("cvs-help-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "cvsHelp" });
 });

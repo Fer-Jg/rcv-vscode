@@ -50,6 +50,16 @@
       {
         "command": "rendercv-vscode.sendFeedback",
         "title": "Send Feedback"
+      },
+      {
+        "command": "rendercv-vscode.newGlobal",
+        "title": "New",
+        "icon": "$(add)"
+      },
+      {
+        "command": "rendercv-vscode.globalSettings",
+        "title": "Settings",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
@@ -65,6 +75,14 @@
         {
           "command": "rendercv-vscode.sendFeedback",
           "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.newGlobal",
+          "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.globalSettings",
+          "when": "false"
         }
       ],
       "explorer/context": [
@@ -72,6 +90,18 @@
           "command": "rendercv-vscode.previewFileAsCV",
           "when": "resourceExtname == .yaml || resourceExtname == .yml",
           "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "rendercv-vscode.newGlobal",
+          "when": "view == rendercv-vscode.mySidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "rendercv-vscode.globalSettings",
+          "when": "view == rendercv-vscode.mySidebar",
+          "group": "navigation@2"
         }
       ]
     }
@@ -85,14 +115,14 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.125.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
+    "@types/vscode": "^1.125.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
     "eslint": "^10.5.0",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",
@@ -102,5 +132,8 @@
     "out/**",
     "sidebar/**",
     "package.json"
-  ]
+  ],
+  "dependencies": {
+    "@vscode/codicons": "^0.0.45"
+  }
 }
