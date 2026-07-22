@@ -56,11 +56,11 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         webview.onDidReceiveMessage((message) => {
             logger.info("Received message from webview:", message);
             if (message.command === "createNewCV") {
-                commands.newCV();
+                sidebar.newCV();
             } else if (message.command === "feedbackClicked") {
-                commands.sendFeedback();
+                sidebar.sendFeedback();
             } else if (message.command === "selectCV") {
-                commands.previewCvSidebar(message.cv);
+                sidebar.previewCvSidebar(message.cv);
             } else if (message.command === "reloadCvs") {
                 sidebar.reloadCvs();
             } else if (message.command === "searchCvs") {

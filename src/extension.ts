@@ -18,14 +18,15 @@ export function activate(context: vscode.ExtensionContext) {
 	detectSoftDependencies();;
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('rendercv-vscode.installRequirements', commands.installRequirements), vscode.commands.registerCommand('rendercv-vscode.newCV', commands.newCV),
 		vscode.commands.registerCommand('rendercv-vscode.previewFileAsCV', commands.previewCvFile),
-		vscode.commands.registerCommand('rendercv-vscode.sendFeedback', commands.sendFeedback),
-		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', commands.previewCvSidebar),
+		vscode.commands.registerCommand('rendercv-vscode.installRequirements', commands.installRequirements),
 		vscode.window.registerWebviewViewProvider(
 			SuperCoolSidebarProvider.viewType,
 			new SuperCoolSidebarProvider(context)
 		),
+		vscode.commands.registerCommand('rendercv-vscode.newCV', sidebarActions.newCV),
+		vscode.commands.registerCommand('rendercv-vscode.sendFeedback', sidebarActions.sendFeedback),
+		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', sidebarActions.previewCvSidebar),
 		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newGlobal),
 		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings)
 	);

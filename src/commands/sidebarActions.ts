@@ -23,3 +23,15 @@ export function filterCvs() {
 export function openCvsHelp() {
     vscode.env.openExternal(vscode.Uri.parse("https://your-docs-url.example.com"));
 }
+
+export function newCV() {
+    vscode.window.showInformationMessage('Creating a new CV... (WIP)');
+}
+
+export async function previewCvSidebar(str: string) {
+    vscode.window.showInformationMessage(`Previewing CV sidebar... (WIP) ${str}`);
+}
+
+export async function sendFeedback() {
+    vscode.window.showInformationMessage(`Sending feedback... (WIP)`);
+}
