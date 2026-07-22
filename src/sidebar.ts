@@ -7,10 +7,16 @@ import * as sidebar from "./commands/sidebarActions";
 
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "rendercv-vscode.mySidebar";
+    extensionUri: vscode.Uri;
 
-    constructor(private readonly extensionUri: vscode.Uri) { }
+    constructor(private readonly context: vscode.ExtensionContext) {
+        this.extensionUri = context.extensionUri;
+        this.context = context;
+    }
+
 
     public resolveWebviewView(webviewView: vscode.WebviewView) {
+        const hasSeenIntro = this.context.workspaceState.get<boolean>("rendercv.hasSeenIntro", false);
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [
@@ -41,6 +47,11 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
 
         webview.html = html;
 
+        webviewView.webview.postMessage({
+            command: "init", showIntro: hasSeenIntro,
+            hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
+        });
+
         webview.onDidReceiveMessage((message) => {
             logger.info("Received message from webview:", message);
             if (message.command === "createNewCV") {
@@ -57,6 +68,10 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 sidebar.filterCvs();
             } else if (message.command === "cvsHelp") {
                 sidebar.openCvsHelp();
+            } else if (message.command === "introDismissed") {
+                this.context.workspaceState.update("rendercv.hasSeenIntro", true);
+            } else if (message.command === "introSetup") {
+                // Handle the setup action
             }
         });
     }
