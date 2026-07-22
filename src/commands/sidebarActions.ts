@@ -5,7 +5,7 @@ export function newGlobal() {
 }
 
 export function openGlobalSettings() {
-    vscode.commands.executeCommand("workbench.action.openSettings", "rendercv-vscode");
+    vscode.commands.executeCommand("workbench.action.openWorkspaceSettings", "rendercv-vscode");
 }
 
 export function reloadCvs() {
