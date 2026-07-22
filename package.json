@@ -104,6 +104,45 @@
           "group": "navigation@2"
         }
       ]
+    },
+    "configuration": {
+      "title": "RenderCV - VSCode",
+      "properties": {
+        "rendercv-vscode.autoRenderCooldown": {
+          "type": "integer",
+          "default": 400,
+          "description": "Time in milliseconds to wait after a file change before re-rendering the CV."
+        },
+        "rendercv-vscode.autoRenderType": {
+          "type": "string",
+          "enum": [
+            "auto", "on-save", "on-click"
+          ],
+          "enumDescriptions": ["Detect file changes and re-render automatically according to Render Cooldown.", "Only render when the user saves a file.", "Only render when the user clicks the preview button."],
+          "default": "auto",
+          "description": "Define when you want to re-render the CV."
+        },
+        "rendercv-vscode.defaultOutputPath": {
+          "type": "string",
+          "default": "",
+          "description": "Default folder where generated CVs are saved."
+        },
+        "rendercv-vscode.defaultTheme": {
+          "type": "string",
+          "description": "Default CV theme to use for new CVs.",
+          "default": "classic",
+          "enum": [
+            "classic",
+            "moderncv",
+            "sb2nov"
+          ]
+        },
+        "rendercv-vscode.renderCVCliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to your RenderCV CLI executable. If you have installed RenderCV globally, you can leave this empty. The setup wizard will try to detect it automatically from a global, venv or uv setup."
+        }
+      }
     }
   },
   "scripts": {
