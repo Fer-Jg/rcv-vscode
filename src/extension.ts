@@ -7,7 +7,6 @@ import SuperCoolSidebarProvider from './sidebar';
 import * as sidebarActions from './commands/sidebarActions';
 import * as rcv from './utils/rcv';
 
-
 // This method is called when your extension is activated
 // Your extension is activated the very first time a command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -25,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', commands.previewCvSidebar),
 		vscode.window.registerWebviewViewProvider(
 			SuperCoolSidebarProvider.viewType,
-			new SuperCoolSidebarProvider(context.extensionUri)
+			new SuperCoolSidebarProvider(context)
 		),
 		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newGlobal),
 		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings)
