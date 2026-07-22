@@ -13,34 +13,18 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "rendercv-vscode" is now active!');
 
-	detectSoftDependencies();
-	
-	const installRequirements = vscode.commands.registerCommand('rendercv-vscode.installRequirements', () => {
-		commands.installRequirements();
-	});
+	detectSoftDependencies();;
 
-	const newCV = vscode.commands.registerCommand('rendercv-vscode.newCV', () => {
-		commands.newCV();
-	});
-
-	const sendFeedback = vscode.commands.registerCommand('rendercv-vscode.sendFeedback', () => {
-		commands.sendFeedback();
-	});
-
-	const previewSidebar = vscode.commands.registerCommand('rendercv-vscode.previewSidebar', (str: string) => {
-		commands.previewCvSidebar(str);
-	});
-
-	const previewFile = vscode.commands.registerCommand('rendercv-vscode.previewFileAsCV', (uri: vscode.Uri) => {
-		commands.previewCvFile(uri);
-	});
-
-	const mySidebarProvider = vscode.window.registerWebviewViewProvider(
-		SuperCoolSidebarProvider.viewType,
-		new SuperCoolSidebarProvider(context.extensionUri)
+	context.subscriptions.push(
+		vscode.commands.registerCommand('rendercv-vscode.installRequirements', commands.installRequirements), vscode.commands.registerCommand('rendercv-vscode.newCV', commands.newCV),
+		vscode.commands.registerCommand('rendercv-vscode.previewFileAsCV', commands.previewCvFile),
+		vscode.commands.registerCommand('rendercv-vscode.sendFeedback', commands.sendFeedback),
+		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', commands.previewCvSidebar),
+		vscode.window.registerWebviewViewProvider(
+			SuperCoolSidebarProvider.viewType,
+			new SuperCoolSidebarProvider(context.extensionUri)
+		)
 	);
-
-	context.subscriptions.push(installRequirements, newCV, previewFile, sendFeedback, previewSidebar, mySidebarProvider);
 }
 
 // This method is called when your extension is deactivated
