@@ -9,15 +9,72 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rendercv-vscode-sidebar",
+          "title": "RCV - VSCode",
+          "icon": "resources/rendercv-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "rendercv-vscode-sidebar": [
+        {
+          "id": "rendercv-vscode.mySidebar",
+          "name": "RCV - VSCode",
+          "type": "webview",
+          "icon": "resources/rendercv-sidebar.svg"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "rendercv-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "rendercv-vscode.installRequirements",
+        "title": "Install RenderCV-VSCode Requirements"
+      },
+      {
+        "command": "rendercv-vscode.newCV",
+        "title": "Create new CV"
+      },
+      {
+        "command": "rendercv-vscode.previewFileAsCV",
+        "title": "Preview file as CV"
+      },
+      {
+        "command": "rendercv-vscode.previewSidebar",
+        "title": "Preview CV from Sidebar"
+      },
+      {
+        "command": "rendercv-vscode.sendFeedback",
+        "title": "Send Feedback"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "rendercv-vscode.previewFileAsCV",
+          "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.previewSidebar",
+          "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.sendFeedback",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "rendercv-vscode.previewFileAsCV",
+          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -40,5 +97,10 @@
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
-  }
+  },
+  "files": [
+    "out/**",
+    "sidebar/**",
+    "package.json"
+  ]
 }
