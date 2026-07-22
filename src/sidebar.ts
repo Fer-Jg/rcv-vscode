@@ -4,6 +4,7 @@ import * as path from "path";
 import * as commands from "./commands/global";
 import { logger } from "./utils/logging";
 import * as sidebar from "./commands/sidebarActions";
+import rcv from "./utils/rcv";
 
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "rendercv-vscode.mySidebar";
@@ -48,7 +49,7 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         webview.html = html;
 
         webviewView.webview.postMessage({
-            command: "init", showIntro: hasSeenIntro,
+            command: "init", showIntro: !hasSeenIntro,
             hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
         });
 
@@ -71,7 +72,14 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
             } else if (message.command === "introDismissed") {
                 this.context.workspaceState.update("rendercv.hasSeenIntro", true);
             } else if (message.command === "introSetup") {
-                // Handle the setup action
+                rcv.detectRenderCVCliPath(false).then((detected) => {
+                    logger.info("RenderCV CLI path detection result:", detected);
+                    this.context.workspaceState.update("rendercv.hasDetectedCliPath", detected);
+                    webviewView.webview.postMessage({
+                        command: "init", showIntro: true,
+                        hasDetectedCliPath: detected
+                    });
+                });
             }
         });
     }

@@ -11,7 +11,7 @@ export default {
 const execFileAsync = promisify(execFile);
 const RENDERCV_EXECUTABLE = process.platform === "win32" ? "rendercv.exe" : "rendercv";
 
-export async function detectRenderCVCliPath(): Promise<boolean> {
+export async function detectRenderCVCliPath(justCheck: boolean = false): Promise<boolean> {
 	const config = vscode.workspace.getConfiguration("rendercv-vscode");
 	const currentPath = config.get<string>("renderCVCliPath");
 	let configuredValidPath = false;
@@ -23,26 +23,24 @@ export async function detectRenderCVCliPath(): Promise<boolean> {
 
 	// If the user-defined path is valid, we don't need to do anything else.
 	if (configuredValidPath) { return true; }
+	else if (justCheck) { return false; }
 
 	// Check for a globally installed RenderCV CLI in the system PATH.
 	const fromSystemPath = await findOnSystemPath();
 	if (fromSystemPath) {
-		await confirmRenderCVCliPathUpdate(currentPath || "", fromSystemPath, "global");
-		return false;
+		return await confirmRenderCVCliPathUpdate(currentPath || "", fromSystemPath, "global");
 	}
 	
 	// Check for a RenderCV CLI in a virtual environment (venv).
 	const fromVenv = await findInVenv();
 	if (fromVenv) {
-		await confirmRenderCVCliPathUpdate(currentPath || "", fromVenv, "venv");
-		return false;
+		return await confirmRenderCVCliPathUpdate(currentPath || "", fromVenv, "venv");
 	}
 
 	// Check for a RenderCV CLI in a UV environment.
 	const fromUv = await findInUvEnv();
 	if (fromUv) {
-		await confirmRenderCVCliPathUpdate(currentPath || "", fromUv, "uv");
-		return false;
+		return await confirmRenderCVCliPathUpdate(currentPath || "", fromUv, "uv");
 	}
 
 	// If none of the above methods find a valid RenderCV CLI path, prompt the user.
@@ -119,33 +117,37 @@ async function findInUvEnv(): Promise<string | undefined> {
 	return undefined;
 }
 
-async function confirmRenderCVCliPathUpdate(origPath: string, newPath: string, source: string): Promise<void> {
-
+async function confirmRenderCVCliPathUpdate(origPath: string, newPath: string, source: string): Promise<boolean> {
 	const errorMessage: string = origPath !== "" ? `You configured the RenderCV CLI path to: ${origPath}, but that did not work and we found a different path: ${newPath} from a ${source} environment. Would you like to update the path?` : `There was no RenderCV CLI path configured, but we found a possible path: ${newPath} from a ${source} environment. Would you like to update the path?`;
 
-	vscode.window.showErrorMessage(errorMessage, "Allow update", "I will change it manually").then(async selection => {
-		if (selection === "Allow update") {
-			const config = vscode.workspace.getConfiguration("rendercv-vscode");
-			await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Workspace);
-			await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.WorkspaceFolder);
-			if (source === "global") {
-				await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Global);
-			}
+	const selection = await vscode.window.showErrorMessage(errorMessage, "Allow update", "I will change it manually");
+
+	if (selection === "Allow update") {
+		await updateRenderCVCliPath(newPath, source);
+		return true;
+	}
+
+	if (selection === "I will change it manually") {
+		const confirmation = await vscode.window.showErrorMessage(
+			"The extension WILL NOT work until you set the correct path to the RenderCV CLI in the settings.",
+			"Allow path update",
+			"Dismiss"
+		);
+
+		if (confirmation === "Allow path update") {
+			await updateRenderCVCliPath(newPath, source);
+			return true;
 		}
-		if (selection === "I will change it manually") {
-			vscode.window.showErrorMessage("The extension WILL NOT work until you set the correct path to the RenderCV CLI in the settings.", "Allow update", "Dismiss").then(async selection => {
-				if (selection === "Allow update") {
-					const config = vscode.workspace.getConfiguration("rendercv-vscode");
-					await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Workspace);
-					await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.WorkspaceFolder);
-					if (source === "global") {
-						await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Global);
-					}
-				}
-				if (selection === "Dismiss") {
-					// Do nothing
-				}
-			});
-		}
-	});
+	}
+
+	return false;
+}
+
+async function updateRenderCVCliPath(newPath: string, source: string): Promise<void> {
+	const config = vscode.workspace.getConfiguration("rendercv-vscode");
+	
+	await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Workspace);
+	if(source === "global") {
+		await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Global);
+	}
 }

@@ -8,7 +8,21 @@
   </head>
   <body>
     <div class="sidebar">
-      <div class="sidebar-content">
+      <div id="intro-view" style="display: none">
+        <h2>Welcome to RenderCV - VSCode</h2>
+        <p>This tool will let you create and manage your CVs directly in VSCode through a UI instead of pure CLI.</p>
+        <p>Get started by creating a new CV or opening an existing one.</p>
+        <div id="intro-need-setup" style="display: none">
+          <p>We couldn't find the RenderCV CLI. You can let the extension automatically set it up by clicking the button below. Or see the <a href="#">documentation</a> for information about manual setup.</p>
+          <button id="intro-setup-button">Automatic setup</button>
+          <button id="intro-setup-button">Manual Setup</button>
+        </div>
+        <div id="intro-done-setup" style="display: none">
+          <p>There is a RenderCV CLI path configuration in place and it seems to be fine, that's great! :D</p>
+        </div>
+        <button id="intro-dismiss-button">Get started</button>
+      </div>
+      <div id="main-view" class="sidebar-content">
         <div class="section-header">
           <span class="section-title">CVs</span>
           <div class="section-actions">

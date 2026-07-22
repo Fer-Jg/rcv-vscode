@@ -49,3 +49,31 @@ document.getElementById("cvs-filter-button").addEventListener("click", () => {
 document.getElementById("cvs-help-button").addEventListener("click", () => {
     vscode.postMessage({ command: "cvsHelp" });
 });
+
+window.addEventListener("message", (event) => {
+    if (event.data.command === "init" && event.data.showIntro) {
+        document.getElementById("intro-view").style.display = "block";
+        document.getElementById("main-view").style.display = "none";
+    }
+    if (event.data.command === "init") {
+        if(!event.data.hasDetectedCliPath){
+            document.getElementById("intro-need-setup").style.display = "block";
+            document.getElementById("intro-done-setup").style.display = "none";
+        } else {
+            document.getElementById("intro-done-setup").style.display = "block";
+            document.getElementById("intro-need-setup").style.display = "none";
+        }
+    }
+});
+
+document.getElementById("intro-setup-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "introSetup" });
+});
+
+document.getElementById("intro-dismiss-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "introDismissed" });
+    document.getElementById("intro-view").style.display = "none";
+    document.getElementById("intro-need-setup").style.display = "none";
+    document.getElementById("intro-done-setup").style.display = "none";
+    document.getElementById("main-view").style.display = "block";
+});

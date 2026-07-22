@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings)
 	);
 
-	rcv.detectRenderCVCliPath().then((detected) => {
+	rcv.detectRenderCVCliPath(true).then((detected) => {
 		context.workspaceState.update("rendercv.hasDetectedCliPath", detected);
 	});
 }
