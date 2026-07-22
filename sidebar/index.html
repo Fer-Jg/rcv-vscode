@@ -1,48 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="{{codiconUri}}" rel="stylesheet">
-    <link href="{{styleUri}}" rel="stylesheet">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="{{codiconUri}}" rel="stylesheet" />
+    <link href="{{styleUri}}" rel="stylesheet" />
+  </head>
+  <body>
     <div class="sidebar">
-        <div class="sidebar-content">
-            <div class="section-header">
-                <span class="section-title">CVs</span>
-                <div class="section-actions">
-                    <button class="icon-button" id="cvs-reload-button" title="Reload">
-                        <i class="codicon codicon-refresh"></i>
-                    </button>
-                    <button class="icon-button" id="cvs-search-button" title="Search">
-                        <i class="codicon codicon-search"></i>
-                    </button>
-                    <button class="icon-button" id="cvs-filter-button" title="Filter">
-                        <i class="codicon codicon-filter"></i>
-                    </button>
-                    <button class="icon-button" id="cvs-help-button" title="Help">
-                        <i class="codicon codicon-question"></i>
-                    </button>
-                </div>
-            </div>
-
-            <button id="create-cv-button" class="create-button" type="button">
-                <i class="codicon codicon-add"></i>
-                Create new CV
+      <div class="sidebar-content">
+        <div class="section-header">
+          <span class="section-title">CVs</span>
+          <div class="section-actions">
+            <button class="icon-button" id="cvs-reload-button" title="Reload">
+              <i class="codicon codicon-refresh"></i>
             </button>
-
-            <ul id="cv-list" class="cv-list">
-                <!-- items injected by main.js -->
-            </ul>
+            <button class="icon-button" id="cvs-search-button" title="Search">
+              <i class="codicon codicon-search"></i>
+            </button>
+            <button class="icon-button" id="cvs-filter-button" title="Filter">
+              <i class="codicon codicon-filter"></i>
+            </button>
+            <button class="icon-button" id="cvs-help-button" title="Help">
+              <i class="codicon codicon-question"></i>
+            </button>
+          </div>
         </div>
 
-        <a href="#" id="feedback-link" class="feedback-link">
-            <i class="codicon codicon-feedback"></i>
-            Feedback
-        </a>
+        <button id="create-cv-button" class="create-button" type="button">
+          <i class="codicon codicon-add"></i>
+          Create new CV
+        </button>
+
+        <ul id="cv-list" class="cv-list">
+          <!-- items injected by main.js -->
+        </ul>
+      </div>
+
+      <a href="#" id="feedback-link" class="feedback-link">
+        <i class="codicon codicon-feedback"></i>
+        Feedback
+      </a>
     </div>
 
     <script src="{{scriptUri}}"></script>
-</body>
+  </body>
 </html>
