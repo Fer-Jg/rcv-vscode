@@ -29,7 +29,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', sidebarActions.previewCvSidebar),
 		vscode.commands.registerCommand('rendercv-vscode.duplicateCV', sidebarActions.duplicateCV),
 		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newGlobal),
-		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings)
+		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings),
+		vscode.commands.registerCommand("rendercv-vscode.extensionLogs", sidebarActions.extensionLogs)
 	);
 
 	rcv.detectRenderCVCliPath(true).then((detected) => {

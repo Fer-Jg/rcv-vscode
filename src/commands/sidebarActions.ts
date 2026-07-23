@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as rcv from "../utils/rcv";
+import { logger } from "../utils/logging";
 
 let contextCV = "";
 
@@ -13,6 +14,10 @@ export function newGlobal() {
 
 export function openGlobalSettings() {
     vscode.commands.executeCommand("workbench.action.openWorkspaceSettings", "rendercv-vscode");
+}
+
+export function extensionLogs() {
+    logger.show();
 }
 
 export function reloadCvs() {

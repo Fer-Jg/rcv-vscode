@@ -64,6 +64,11 @@
         "command": "rendercv-vscode.globalSettings",
         "title": "Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "rendercv-vscode.extensionLogs",
+        "title": "Output Logs",
+        "icon": "$(output)"
       }
     ],
     "menus": {
@@ -91,6 +96,10 @@
         {
           "command": "rendercv-vscode.globalSettings",
           "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.extensionLogs",
+          "when": "false"
         }
       ],
       "explorer/context": [
@@ -117,6 +126,11 @@
           "command": "rendercv-vscode.globalSettings",
           "when": "view == rendercv-vscode.mySidebar",
           "group": "navigation@2"
+        },
+        {
+          "command": "rendercv-vscode.extensionLogs",
+          "when": "view == rendercv-vscode.mySidebar",
+          "group": "navigation@3"
         }
       ]
     },
