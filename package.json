@@ -145,9 +145,15 @@
         "rendercv-vscode.autoRenderType": {
           "type": "string",
           "enum": [
-            "auto", "on-save", "on-click"
+            "auto",
+            "on-save",
+            "on-click"
           ],
-          "enumDescriptions": ["Detect file changes and re-render automatically according to Render Cooldown.", "Only render when the user saves a file.", "Only render when the user clicks the preview button."],
+          "enumDescriptions": [
+            "Detect file changes and re-render automatically according to Render Cooldown.",
+            "Only render when the user saves a file.",
+            "Only render when the user clicks the preview button."
+          ],
           "default": "auto",
           "description": "Define when you want to re-render the CV."
         },
