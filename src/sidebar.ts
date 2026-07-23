@@ -53,6 +53,12 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
             hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
         });
 
+        const yamlList = this.getYamlFiles();
+        
+        webviewView.webview.postMessage({
+            command: "cvList", cvs: yamlList
+        });
+
         webview.onDidReceiveMessage((message) => {
             logger.info("Received message from webview:", message);
             if (message.command === "createNewCV") {
@@ -82,6 +88,39 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 });
             }
         });
+    }
+
+    private getYamlFiles(): string[] {
+        const config = vscode.workspace.getConfiguration("rendercv-vscode");
+        const yamlFilesFolder = config.get<string>("CVYamlFilesFolder", "yamls");
+
+        const yamlsFolderPath = path.isAbsolute(yamlFilesFolder) ? yamlFilesFolder : path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", yamlFilesFolder);
+
+        if (!yamlsFolderPath.trim()) {
+            // TODO: Add info in wiki
+            logger.warn("No workspace folder found. Cannot determine root path.");
+            return [];
+        }
+
+        if (!fs.existsSync(yamlsFolderPath)) {
+            // TODO: Add info in wiki
+            logger.warn(`Workspace folder does not exist: ${yamlsFolderPath}`);
+            return [];
+        }
+
+        try {
+            const yamlList = fs
+                .readdirSync(yamlsFolderPath, { withFileTypes: true })
+                .filter(entry => entry.isFile())
+                .filter(entry => [".yaml", ".yml"].includes(path.extname(entry.name).toLowerCase()))
+                .map(entry => path.join(yamlsFolderPath, entry.name));
+
+            logger.info(`YAML files found in the ${yamlsFolderPath} directory:`, yamlList);
+            return yamlList;
+        } catch (error) {
+            logger.error(`Failed to read YAML files from workspace (${yamlsFolderPath}), error: ${error}`);
+            return [];
+        }
     }
 }
 

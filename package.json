@@ -141,6 +141,11 @@
           "type": "string",
           "default": "",
           "description": "Path to your RenderCV CLI executable. If you have installed RenderCV globally, you can leave this empty. The setup wizard will try to detect it automatically from a global, venv or uv setup."
+        },
+        "rendercv-vscode.CVYamlFilesFolder": {
+          "type": "string",
+          "default": "yamls",
+          "description": "Path to the folder where your CV YAML files are stored."
         }
       }
     }

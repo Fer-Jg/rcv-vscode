@@ -1,18 +1,29 @@
 const vscode = acquireVsCodeApi();
 
-// Replace this with real CV/project data from the extension (e.g. via
-// webview.onDidReceiveMessage / postMessage from the extension host).
-const cvs = ["CV 1", "CV 2", "CV 3"];
-let selectedCv = cvs[0];
+let cvs = [];
+let selectedCv = "";
 
 const listEl = document.getElementById("cv-list");
 
+function getFileName(filePath) {
+    return filePath.split(/[\\/]/).pop() || filePath;
+}
+
 function render() {
     listEl.innerHTML = "";
+    if (cvs.length === 0) {
+        const li = document.createElement("li");
+        li.className = "cv-item";
+        li.textContent = "No YAML files found";
+        listEl.appendChild(li);
+        return;
+    }
+
     cvs.forEach((name) => {
         const li = document.createElement("li");
         li.className = "cv-item" + (name === selectedCv ? " selected" : "");
-        li.textContent = name;
+        li.textContent = getFileName(name);
+        li.title = name;
         li.addEventListener("click", () => {
             selectedCv = name;
             render();
@@ -63,6 +74,11 @@ window.addEventListener("message", (event) => {
             document.getElementById("intro-done-setup").style.display = "block";
             document.getElementById("intro-need-setup").style.display = "none";
         }
+    }
+    if (event.data.command === "cvList") {
+        cvs = event.data.cvs || [];
+        selectedCv = cvs[0] || "";
+        render();
     }
 });
 
