@@ -83,7 +83,7 @@ window.addEventListener("message", (event) => {
     }
     if (event.data.command === "cvList") {
         cvs = event.data.cvs || [];
-        selectedCv = cvs[0] || "";
+        selectedCv = cvs.includes(selectedCv) ? selectedCv : cvs[0] || "";
         render();
     }
 });
@@ -99,3 +99,5 @@ document.getElementById("intro-dismiss-button").addEventListener("click", () => 
     document.getElementById("intro-done-setup").style.display = "none";
     document.getElementById("main-view").style.display = "block";
 });
+
+vscode.postMessage({ command: "ready" });

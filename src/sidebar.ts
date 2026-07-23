@@ -50,22 +50,11 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
             .replace("{{scriptUri}}", scriptUri.toString())
             .replace("{{codiconUri}}", codiconUri.toString());
 
-        webview.html = html;
-
-        webviewView.webview.postMessage({
-            command: "init", showIntro: !hasSeenIntro,
-            hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
-        });
-
-        const yamlList = this.getYamlFiles();
-        
-        webviewView.webview.postMessage({
-            command: "cvList", cvs: yamlList
-        });
-
         webview.onDidReceiveMessage((message) => {
             logger.info("Received message from webview:", message);
-            if (message.command === "createNewCV") {
+            if (message.command === "ready") {
+                this.postSidebarState(!hasSeenIntro);
+            } else if (message.command === "createNewCV") {
                 sidebar.newCV();
             } else if (message.command === "feedbackClicked") {
                 sidebar.sendFeedback();
@@ -94,14 +83,29 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 });
             }
         });
+
+        webview.html = html;
     }
 
     private reloadCvs() {
+        this.postCvList();
+        logger.info("Reloaded CVs in the sidebar.");
+    }
+
+    private postSidebarState(showIntro: boolean) {
+        this.webviewView?.webview.postMessage({
+            command: "init",
+            showIntro,
+            hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
+        });
+        this.postCvList();
+    }
+
+    private postCvList() {
         const yamlList = this.getYamlFiles();
         this.webviewView?.webview.postMessage({
             command: "cvList", cvs: yamlList
         });
-        logger.info("Reloaded CVs in the sidebar.");
     }
 
     private getYamlFiles(): string[] {
