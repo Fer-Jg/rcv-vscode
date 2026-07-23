@@ -48,6 +48,10 @@
         "title": "Preview CV from Sidebar"
       },
       {
+        "command": "rendercv-vscode.duplicateCV",
+        "title": "Duplicate CV"
+      },
+      {
         "command": "rendercv-vscode.sendFeedback",
         "title": "Send Feedback"
       },
@@ -73,6 +77,10 @@
           "when": "false"
         },
         {
+          "command": "rendercv-vscode.duplicateCV",
+          "when": "false"
+        },
+        {
           "command": "rendercv-vscode.sendFeedback",
           "when": "false"
         },
@@ -90,6 +98,13 @@
           "command": "rendercv-vscode.previewFileAsCV",
           "when": "resourceExtname == .yaml || resourceExtname == .yml",
           "group": "navigation"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "rendercv-vscode.duplicateCV",
+          "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
+          "group": "inline"
         }
       ],
       "view/title": [

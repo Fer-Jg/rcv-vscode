@@ -24,10 +24,16 @@ function render() {
         li.className = "cv-item" + (name === selectedCv ? " selected" : "");
         li.textContent = getFileName(name);
         li.title = name;
+        li.dataset.vscodeContext = JSON.stringify({
+            webviewSection: "cvItem"
+        });
         li.addEventListener("click", () => {
             selectedCv = name;
             render();
             vscode.postMessage({ command: "selectCV", cv: name });
+        });
+        li.addEventListener("contextmenu", () => {
+            vscode.postMessage({ command: "setContextCV", cv: name });
         });
         listEl.appendChild(li);
     });

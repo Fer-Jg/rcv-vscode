@@ -1,6 +1,12 @@
 import * as vscode from "vscode";
 import * as rcv from "../utils/rcv";
 
+let contextCV = "";
+
+export function setContextCV(cv: string) {
+    contextCV = cv;
+}
+
 export function newGlobal() {
     vscode.window.showInformationMessage("Create new global item — implement me!");
 }
@@ -32,6 +38,10 @@ export function newCV() {
 export async function previewCvSidebar(str: string) {
     vscode.window.showInformationMessage(`Previewing CV sidebar... (WIP) ${str}`);
     rcv.previewFileAsCV(str);
+}
+
+export function duplicateCV() {
+    vscode.window.showInformationMessage(`Duplicate CV... (WIP) ${contextCV}`);
 }
 
 export async function sendFeedback() {
