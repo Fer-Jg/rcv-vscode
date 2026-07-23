@@ -9,6 +9,7 @@ import rcv from "./utils/rcv";
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "rendercv-vscode.mySidebar";
     extensionUri: vscode.Uri;
+    private webviewView?: vscode.WebviewView;
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -17,6 +18,9 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
 
 
     public resolveWebviewView(webviewView: vscode.WebviewView) {
+        this.webviewView = webviewView;
+        sidebar.setReloadCvsHandler(() => this.reloadCvs());
+
         const hasSeenIntro = this.context.workspaceState.get<boolean>("rendercv.hasSeenIntro", false);
         webviewView.webview.options = {
             enableScripts: true,
@@ -90,6 +94,14 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 });
             }
         });
+    }
+
+    private reloadCvs() {
+        const yamlList = this.getYamlFiles();
+        this.webviewView?.webview.postMessage({
+            command: "cvList", cvs: yamlList
+        });
+        logger.info("Reloaded CVs in the sidebar.");
     }
 
     private getYamlFiles(): string[] {

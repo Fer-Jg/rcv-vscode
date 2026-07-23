@@ -3,6 +3,7 @@ import * as rcv from "../utils/rcv";
 import { logger } from "../utils/logging";
 
 let contextCV = "";
+let reloadCvsHandler: (() => void) | undefined;
 
 function temporaryNotification(message: string, duration: number = 3000) {
     vscode.window.withProgress(
@@ -50,6 +51,10 @@ export function setContextCV(cv: string) {
     contextCV = cv;
 }
 
+export function setReloadCvsHandler(handler: () => void) {
+    reloadCvsHandler = handler;
+}
+
 export function newGlobal() {
     runPlaceholderWorkflow(
         "Creating a new global item...",
@@ -67,11 +72,12 @@ export function extensionLogs() {
 }
 
 export function reloadCvs() {
-    runPlaceholderWorkflow(
-        "Reloading CVs...",
-        "CV reload cancelled.",
-        "CVs reloaded successfully! (WIP)"
-    );
+    if (!reloadCvsHandler) {
+        logger.warn("Cannot reload CVs because the sidebar is not ready.");
+        return;
+    }
+
+    reloadCvsHandler();
 }
 
 export function searchCvs() {
