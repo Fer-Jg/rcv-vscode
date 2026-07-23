@@ -157,7 +157,7 @@ async function updateRenderCVCliPath(newPath: string, source: string): Promise<v
 	}
 }
 
-export async function executeRCVCommand(args: string[]): Promise<string> {
+export async function executeRCVCommand(args: string[], cwd?: string): Promise<string> {
 	const config = vscode.workspace.getConfiguration("rendercv-vscode");
 	const cliPath = config.get<string>("renderCVCliPath");
 
@@ -169,6 +169,7 @@ export async function executeRCVCommand(args: string[]): Promise<string> {
 		const { stdout } = await execFileAsync(cliPath, args, {
 			timeout: 5000,
 			encoding: "utf-8",
+			cwd,
 			env: {
 				...process.env,
 				PYTHONUTF8: "1",

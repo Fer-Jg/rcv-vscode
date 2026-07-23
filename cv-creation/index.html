@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';"
+    />
+    <title>Create CV</title>
+    <link href="{{styleUri}}" rel="stylesheet" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Create CV</h1>
+          <p class="muted">Configure the starter file and templates in one place.</p>
+        </div>
+        <div class="folder" id="target-folder" title=""></div>
+      </header>
+
+      <form id="cv-form">
+        <div id="workspace-warning" class="workspace-warning" hidden>Open a workspace folder before creating a CV.</div>
+
+        <div class="field">
+          <label for="cv-name">CV name</label>
+          <input id="cv-name" name="cvName" type="text" autocomplete="name" placeholder="John Doe" required />
+          <p class="muted">This is passed to RenderCV as the full name for the new YAML file.</p>
+        </div>
+
+        <div class="grid">
+          <section class="option-panel">
+            <div class="switch-row">
+              <div>
+                <div class="label">Override theme</div>
+                <p class="muted">Use RenderCV's default unless enabled.</p>
+              </div>
+              <label class="switch" title="Override theme">
+                <input id="theme-enabled" type="checkbox" />
+                <span class="track"></span>
+              </label>
+            </div>
+            <div id="theme-wrap" class="select-wrap" hidden>
+              <label for="theme">Theme</label>
+              <select id="theme"></select>
+            </div>
+          </section>
+
+          <section class="option-panel">
+            <div class="switch-row">
+              <div>
+                <div class="label">Override locale</div>
+                <p class="muted">Use RenderCV's default unless enabled.</p>
+              </div>
+              <label class="switch" title="Override locale">
+                <input id="locale-enabled" type="checkbox" />
+                <span class="track"></span>
+              </label>
+            </div>
+            <div id="locale-wrap" class="select-wrap" hidden>
+              <label for="locale">Locale</label>
+              <select id="locale"></select>
+            </div>
+          </section>
+        </div>
+
+        <div class="grid">
+          <label class="check-row">
+            <input id="typst-templates" type="checkbox" checked />
+            <span>Create Typst templates</span>
+          </label>
+          <label class="check-row">
+            <input id="markdown-templates" type="checkbox" checked />
+            <span>Create Markdown templates</span>
+          </label>
+        </div>
+
+        <section class="preview">
+          <div class="label">Command preview</div>
+          <code id="command-preview"></code>
+        </section>
+
+        <div id="status" class="status" aria-live="polite"></div>
+
+        <div class="actions">
+          <button id="cancel-button" class="secondary" type="button">Cancel</button>
+          <button id="create-button" type="submit">Create CV</button>
+        </div>
+      </form>
+    </main>
+
+    <script nonce="{{nonce}}">
+      window.rendercvCreateCvState = {{state}};
+    </script>
+    <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+  </body>
+</html>

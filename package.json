@@ -57,7 +57,7 @@
       },
       {
         "command": "rendercv-vscode.newGlobal",
-        "title": "New",
+        "title": "New CV",
         "icon": "$(add)"
       },
       {
@@ -203,6 +203,7 @@
   },
   "files": [
     "out/**",
+    "cv-creation/**",
     "sidebar/**",
     "package.json"
   ],

@@ -16,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('Congratulations, your extension "rendercv-vscode" is now active!');
 
 	detectSoftDependencies();;
+	sidebarActions.setExtensionUri(context.extensionUri);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('rendercv-vscode.previewFileAsCV', commands.previewCvFile),
@@ -24,11 +25,11 @@ export function activate(context: vscode.ExtensionContext) {
 			SuperCoolSidebarProvider.viewType,
 			new SuperCoolSidebarProvider(context)
 		),
-		vscode.commands.registerCommand('rendercv-vscode.newCV', sidebarActions.newCV),
+		vscode.commands.registerCommand('rendercv-vscode.newCV', sidebarActions.newCv),
 		vscode.commands.registerCommand('rendercv-vscode.sendFeedback', sidebarActions.sendFeedback),
 		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', sidebarActions.previewCvSidebar),
 		vscode.commands.registerCommand('rendercv-vscode.duplicateCV', sidebarActions.duplicateCV),
-		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newGlobal),
+		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newCvFromGlobal),
 		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings),
 		vscode.commands.registerCommand("rendercv-vscode.extensionLogs", sidebarActions.extensionLogs)
 	);
