@@ -118,6 +118,14 @@ button:focus-visible {
   background: var(--vscode-sideBar-background);
 }
 
+.check-row.compact {
+  padding: 7px 9px;
+}
+
+.check-row[hidden] {
+  display: none;
+}
+
 .switch {
   position: relative;
   width: 38px;

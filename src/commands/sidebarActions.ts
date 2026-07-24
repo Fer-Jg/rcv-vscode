@@ -4,9 +4,17 @@ import * as path from "path";
 import * as rcv from "../utils/rcv";
 import { logger } from "../utils/logging";
 import {
-    preflightNewCvSplitFiles,
-    splitRootKeysToSiblingFiles,
+    predictRenderCvSourceFileName,
+    preflightYamlSplitFiles,
+    splitRootKeysToFiles,
+    type SplitRootDestination,
 } from "../utils/yamlDocuments";
+import {
+    getCvFolderLayout,
+    getGlobalConfigFiles,
+    getWorkspaceLayout,
+    pathExists,
+} from "../utils/workspaceLayout";
 
 let contextCV = "";
 let reloadCvsHandler: (() => void) | undefined;
@@ -51,9 +59,16 @@ const locales = [
 ];
 
 interface CvCreationOptions {
+    personName: string;
     cvName: string;
     theme?: string;
     locale?: string;
+    useLocalDesign: boolean;
+    useLocalLocale: boolean;
+    useLocalSettings: boolean;
+    saveDesignAsGlobal: boolean;
+    saveLocaleAsGlobal: boolean;
+    saveSettingsAsGlobal: boolean;
     createTypstTemplates: boolean;
     createMarkdownTemplates: boolean;
 }
@@ -174,8 +189,17 @@ async function startCvCreationWizard() {
     }
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const targetFolder = workspaceFolder ? getCvTargetFolder(workspaceFolder) : "";
+    const layout = workspaceFolder ? getWorkspaceLayout(workspaceFolder) : undefined;
+    const globals = layout ? getGlobalConfigFiles(layout) : undefined;
+    const targetFolder = layout ? layout.yamlRoot : "";
     const assetRoot = vscode.Uri.joinPath(extensionUri, "cv-creation");
+    const globalState = globals
+        ? {
+            design: fs.existsSync(globals.design),
+            locale: fs.existsSync(globals.locale),
+            settings: fs.existsSync(globals.settings),
+        }
+        : { design: false, locale: false, settings: false };
 
     cvCreationPanel = vscode.window.createWebviewPanel(
         "rendercvCreateCv",
@@ -192,6 +216,7 @@ async function startCvCreationWizard() {
         locales,
         targetFolder,
         hasWorkspace: Boolean(workspaceFolder),
+        globals: globalState,
     });
     cvCreationPanel.onDidDispose(() => {
         cvCreationPanel = undefined;
@@ -230,16 +255,53 @@ async function startCvCreationWizard() {
 }
 
 async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: vscode.WorkspaceFolder): Promise<CvCreationResult> {
-    const cvName = options.cvName.trim();
-    if (!cvName) {
-        throw new Error("CV name is required.");
+    const personName = options.personName.trim();
+    if (!personName) {
+        throw new Error("Person is required.");
     }
 
-    const targetFolder = getCvTargetFolder(workspaceFolder);
-    const args = buildNewCvArgs({ ...options, cvName });
+    const cvLayout = getCvFolderLayout(workspaceFolder, options.cvName);
+    const globals = getGlobalConfigFiles(cvLayout);
+    const globalExists = {
+        design: await pathExists(globals.design),
+        locale: await pathExists(globals.locale),
+        settings: await pathExists(globals.settings),
+    };
+    const normalizedOptions: CvCreationOptions = {
+        ...options,
+        personName,
+        cvName: cvLayout.cvName,
+        useLocalDesign: options.useLocalDesign || !globalExists.design,
+        useLocalLocale: options.useLocalLocale || !globalExists.locale,
+        useLocalSettings: options.useLocalSettings || !globalExists.settings,
+        saveDesignAsGlobal: options.saveDesignAsGlobal && !globalExists.design,
+        saveLocaleAsGlobal: options.saveLocaleAsGlobal && !globalExists.locale,
+        saveSettingsAsGlobal: options.saveSettingsAsGlobal && !globalExists.settings,
+    };
+    if (!normalizedOptions.useLocalDesign || !normalizedOptions.useLocalLocale || !normalizedOptions.useLocalSettings) {
+        // This is intentionally allowed only when the corresponding global exists.
+        if (!normalizedOptions.useLocalDesign && !globalExists.design) {
+            throw new Error("Design must be overridden because globals/design.yaml does not exist.");
+        }
+        if (!normalizedOptions.useLocalLocale && !globalExists.locale) {
+            throw new Error("Locale must be overridden because globals/locale.yaml does not exist.");
+        }
+        if (!normalizedOptions.useLocalSettings && !globalExists.settings) {
+            throw new Error("Settings must be overridden because globals/settings.yaml does not exist.");
+        }
+    }
+    const args = buildNewCvArgs(normalizedOptions);
+    const sourceFilePath = path.join(cvLayout.cvYamlFolder, predictRenderCvSourceFileName(personName));
+    const splitDestinations = buildSplitDestinations(normalizedOptions, cvLayout, globals);
 
     postCvCreationStatus("busy", "Checking output files...");
-    const preflight = await preflightNewCvSplitFiles(targetFolder, cvName);
+    if (await pathExists(cvLayout.cvYamlFolder)) {
+        throw new Error(`Cannot create CV because this folder already exists: ${cvLayout.cvYamlFolder}. Choose a different CV name.`);
+    }
+    if (await pathExists(cvLayout.outputFolder)) {
+        throw new Error(`Cannot create CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name.`);
+    }
+    const preflight = await preflightYamlSplitFiles(sourceFilePath, splitDestinations);
     if (preflight.conflicts.length > 0) {
         throw new Error(`Cannot create CV because these files already exist: ${preflight.conflicts.join(", ")}`);
     }
@@ -251,17 +313,19 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
     }
 
     postCvCreationStatus("busy", "Creating CV file...");
-    await fs.promises.mkdir(targetFolder, { recursive: true });
-    const output = await rcv.executeRCVCommand(args, targetFolder);
+    await fs.promises.mkdir(cvLayout.cvYamlFolder, { recursive: true });
+    await fs.promises.mkdir(cvLayout.globalsFolder, { recursive: true });
+    await fs.promises.mkdir(cvLayout.outputsRoot, { recursive: true });
+    const output = await rcv.executeRCVCommand(args, cvLayout.cvYamlFolder);
     logger.info(`RenderCV CLI output: ${output}`);
 
-    const createdFile = preflight.sourceFilePath;
+    const createdFile = sourceFilePath;
     if (!fs.existsSync(createdFile)) {
         throw new Error(`RenderCV finished, but the expected YAML file was not created: ${createdFile}`);
     }
 
     postCvCreationStatus("busy", "Splitting YAML sections...");
-    const splitResult = await splitRootKeysToSiblingFiles(createdFile);
+    const splitResult = await splitRootKeysToFiles(createdFile, splitDestinations);
 
     return {
         splitFileCount: splitResult.createdFiles.length,
@@ -283,16 +347,33 @@ function buildNewCvArgs(options: CvCreationOptions): string[] {
     if (options.createMarkdownTemplates) {
         args.push("--create-markdown-templates");
     }
-    args.push(options.cvName.trim());
+    args.push(options.personName.trim());
     return args;
 }
 
-function getCvTargetFolder(workspaceFolder: vscode.WorkspaceFolder): string {
-    const config = vscode.workspace.getConfiguration("rendercv-vscode");
-    const yamlFilesFolder = config.get<string>("CVYamlFilesFolder", "yamls");
-    return path.isAbsolute(yamlFilesFolder)
-        ? yamlFilesFolder
-        : path.join(workspaceFolder.uri.fsPath, yamlFilesFolder);
+function buildSplitDestinations(
+    options: CvCreationOptions,
+    cvLayout: ReturnType<typeof getCvFolderLayout>,
+    globals: ReturnType<typeof getGlobalConfigFiles>
+): SplitRootDestination[] {
+    return [
+        { rootKey: "cv", localFile: cvLayout.cvFile },
+        {
+            rootKey: "design",
+            localFile: options.useLocalDesign ? cvLayout.designFile : undefined,
+            globalFile: options.saveDesignAsGlobal ? globals.design : undefined,
+        },
+        {
+            rootKey: "locale",
+            localFile: options.useLocalLocale ? cvLayout.localeFile : undefined,
+            globalFile: options.saveLocaleAsGlobal ? globals.locale : undefined,
+        },
+        {
+            rootKey: "settings",
+            localFile: options.useLocalSettings ? cvLayout.settingsFile : undefined,
+            globalFile: options.saveSettingsAsGlobal ? globals.settings : undefined,
+        },
+    ];
 }
 
 function postCvCreationStatus(status: "idle" | "busy" | "success" | "error", message: string) {
@@ -306,7 +387,13 @@ function postCvCreationStatus(status: "idle" | "busy" | "success" | "error", mes
 function getCvCreationHtml(
     webview: vscode.Webview,
     assetRoot: vscode.Uri,
-    state: { themes: string[]; locales: string[]; targetFolder: string; hasWorkspace: boolean }
+    state: {
+        themes: string[];
+        locales: string[];
+        targetFolder: string;
+        hasWorkspace: boolean;
+        globals: { design: boolean; locale: boolean; settings: boolean };
+    }
 ): string {
     const nonce = getNonce();
     const htmlPath = path.join(assetRoot.fsPath, "index.html");

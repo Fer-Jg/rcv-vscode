@@ -5,6 +5,7 @@ import * as commands from "./commands/global";
 import { logger } from "./utils/logging";
 import * as sidebar from "./commands/sidebarActions";
 import rcv from "./utils/rcv";
+import { getWorkspaceLayout } from "./utils/workspaceLayout";
 
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "rendercv-vscode.mySidebar";
@@ -109,16 +110,15 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private getYamlFiles(): string[] {
-        const config = vscode.workspace.getConfiguration("rendercv-vscode");
-        const yamlFilesFolder = config.get<string>("CVYamlFilesFolder", "yamls");
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 
-        const yamlsFolderPath = path.isAbsolute(yamlFilesFolder) ? yamlFilesFolder : path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", yamlFilesFolder);
-
-        if (!yamlsFolderPath.trim()) {
+        if (!workspaceFolder) {
             // TODO: Add info in wiki
             logger.warn("No workspace folder found. Cannot determine root path.");
             return [];
         }
+
+        const yamlsFolderPath = getWorkspaceLayout(workspaceFolder).yamlRoot;
 
         if (!fs.existsSync(yamlsFolderPath)) {
             // TODO: Add info in wiki
@@ -129,14 +129,14 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         try {
             const yamlList = fs
                 .readdirSync(yamlsFolderPath, { withFileTypes: true })
-                .filter(entry => entry.isFile())
-                .filter(entry => [".yaml", ".yml"].includes(path.extname(entry.name).toLowerCase()))
-                .map(entry => path.join(yamlsFolderPath, entry.name));
+                .filter(entry => entry.isDirectory())
+                .map(entry => path.join(yamlsFolderPath, entry.name, "cv.yaml"))
+                .filter(cvFile => fs.existsSync(cvFile));
 
-            logger.info(`YAML files found in the ${yamlsFolderPath} directory:`, yamlList);
+            logger.info(`CV folders found in the ${yamlsFolderPath} directory:`, yamlList);
             return yamlList;
         } catch (error) {
-            logger.error(`Failed to read YAML files from workspace (${yamlsFolderPath}), error: ${error}`);
+            logger.error(`Failed to read CV folders from workspace (${yamlsFolderPath}), error: ${error}`);
             return [];
         }
     }

@@ -4,6 +4,11 @@ import * as path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import logger from "./logging";
+import {
+	findFirstExistingPath,
+	getCvFolderLayoutForCvFile,
+	getGlobalConfigFiles,
+} from "./workspaceLayout";
 
 export default {
 	detectRenderCVCliPath,
@@ -35,7 +40,7 @@ export async function detectRenderCVCliPath(justCheck: boolean = false): Promise
 	if (fromSystemPath) {
 		return await confirmRenderCVCliPathUpdate(currentPath || "", fromSystemPath, "global");
 	}
-	
+
 	// Check for a RenderCV CLI in a virtual environment (venv).
 	const fromVenv = await findInVenv();
 	if (fromVenv) {
@@ -150,7 +155,7 @@ async function confirmRenderCVCliPathUpdate(origPath: string, newPath: string, s
 
 async function updateRenderCVCliPath(newPath: string, source: string): Promise<void> {
 	const config = vscode.workspace.getConfiguration("rendercv-vscode");
-	
+
 	await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Workspace);
 	if (source === "global") {
 		await config.update("renderCVCliPath", newPath, vscode.ConfigurationTarget.Global);
@@ -187,31 +192,13 @@ export async function previewFileAsCV(filePath: string): Promise<void> {
 	try {
 		await openYamlPreview(filePath);
 
-		const editor = vscode.window.activeTextEditor;
-		const rootPath = editor ? vscode.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath : "";
+		const renderOptions = await getRenderOptions(filePath);
+		fs.mkdirSync(renderOptions.outputFolder, { recursive: true });
 
-		if (rootPath === undefined || rootPath === null) {
-			vscode.window.showErrorMessage("Could not determine the root path of the workspace. Please open a folder in VS Code.");
-			return;
-		}
-
-		const OUTPUT_DIR = path.join(path.dirname(filePath), "outputs", path.parse(filePath).name);
-		const GLOBALS_DIR = path.join(rootPath, "globals");
-		const GLOBAL_DESIGN_FILE = path.join(GLOBALS_DIR, "design.yaml");
-		const GLOBAL_LOCALE_FILE = path.join(GLOBALS_DIR, "locale.yaml");
-		const GLOBAL_SETTINGS_FILE = path.join(GLOBALS_DIR, "settings.yaml");
-		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-		const output = await executeRCVCommand([
-			"render", filePath,
-			"--output-folder", OUTPUT_DIR,
-			"--design", GLOBAL_DESIGN_FILE,
-			"--locale-catalog", GLOBAL_LOCALE_FILE,
-			"--settings", GLOBAL_SETTINGS_FILE,
-		]);
+		const output = await executeRCVCommand(renderOptions.args);
 		logger.info(`RenderCV CLI output: ${output}`);
 
-		const pdfPath = await findGeneratedPdf(filePath);
+		const pdfPath = await findGeneratedPdf(renderOptions.outputFolder);
 		logger.info(`Generated PDF path: ${pdfPath}`);
 		if (!pdfPath) {
 			vscode.window.showWarningMessage("RenderCV finished, but no generated PDF was found.");
@@ -264,13 +251,36 @@ async function openPdfPreview(pdfPath: string): Promise<void> {
 	);
 }
 
-async function findGeneratedPdf(originPath: string): Promise<string | undefined> {
-	const outputDirectory = path.join(
-		path.dirname(originPath),
-		"outputs",
-		path.parse(originPath).name
-	);
+async function getRenderOptions(filePath: string): Promise<{ args: string[]; outputFolder: string }> {
+	const structuredLayout = getCvFolderLayoutForCvFile(filePath);
+	if (!structuredLayout) {
+		const outputFolder = path.join(path.dirname(filePath), "outputs", path.parse(filePath).name);
+		return {
+			outputFolder,
+			args: ["render", filePath, "--output-folder", outputFolder],
+		};
+	}
 
+	const globals = getGlobalConfigFiles(structuredLayout);
+	const design = await findFirstExistingPath([structuredLayout.designFile, globals.design]);
+	const locale = await findFirstExistingPath([structuredLayout.localeFile, globals.locale]);
+	const settings = await findFirstExistingPath([structuredLayout.settingsFile, globals.settings]);
+	const args = ["render", filePath, "--output-folder", structuredLayout.outputFolder];
+
+	if (design) {
+		args.push("--design", design);
+	}
+	if (locale) {
+		args.push("--locale-catalog", locale);
+	}
+	if (settings) {
+		args.push("--settings", settings);
+	}
+
+	return { args, outputFolder: structuredLayout.outputFolder };
+}
+
+async function findGeneratedPdf(outputDirectory: string): Promise<string | undefined> {
 	if (fs.existsSync(outputDirectory)) {
 		const pdf = fs
 			.readdirSync(outputDirectory)

@@ -1,10 +1,15 @@
 import * as fs from "fs";
-import * as path from "path";
 import { Document, isMap, isScalar, parseDocument, YAMLMap } from "yaml";
-import type { Node, Pair } from "yaml";
+import type { Pair } from "yaml";
 
 export const DEFAULT_SPLIT_ROOT_KEYS = ["cv", "design", "locale", "settings"] as const;
 export const SCHEMA_ROOT_KEY = "$schema";
+
+export interface SplitRootDestination {
+    rootKey: string;
+    localFile?: string;
+    globalFile?: string;
+}
 
 export interface SplitYamlResult {
     createdFiles: string[];
@@ -62,10 +67,11 @@ export async function createYamlFileWithKey(
     await fs.promises.writeFile(filePath, document.toString(), "utf8");
 }
 
-export async function preflightNewCvSplitFiles(targetFolder: string, cvName: string): Promise<PreflightResult> {
-    const sourceFilePath = path.join(targetFolder, predictRenderCvSourceFileName(cvName));
-    const sourceStem = getSplitBaseStem(sourceFilePath);
-    const splitFilePaths = DEFAULT_SPLIT_ROOT_KEYS.map(key => path.join(targetFolder, `${sourceStem}_${key}.yaml`));
+export async function preflightYamlSplitFiles(sourceFilePath: string, destinations: SplitRootDestination[]): Promise<PreflightResult> {
+    const splitFilePaths = destinations.flatMap(destination => [
+        destination.localFile,
+        destination.globalFile,
+    ]).filter((filePath): filePath is string => Boolean(filePath));
     const expectedFiles = uniqueFilePaths([sourceFilePath, ...splitFilePaths]);
     const existingChecks = await Promise.all(expectedFiles.map(async filePath => {
         try {
@@ -83,9 +89,9 @@ export async function preflightNewCvSplitFiles(targetFolder: string, cvName: str
     };
 }
 
-export async function splitRootKeysToSiblingFiles(
+export async function splitRootKeysToFiles(
     filePath: string,
-    rootKeys: readonly string[] = DEFAULT_SPLIT_ROOT_KEYS
+    destinations: SplitRootDestination[]
 ): Promise<SplitYamlResult> {
     const document = await parseYamlFile(filePath);
     const root = document.contents;
@@ -99,69 +105,40 @@ export async function splitRootKeysToSiblingFiles(
         };
     }
 
-    const rootKeySet = new Set(rootKeys);
     const schemaPair = findRootPair(root, SCHEMA_ROOT_KEY);
-    const pairsToSplit = root.items.filter(pair => {
-        const key = getPairKey(pair);
-        return key !== undefined && rootKeySet.has(key);
-    });
-
-    const outputPaths = pairsToSplit.map(pair => {
-        const key = getPairKey(pair);
-        if (!key) {
-            throw new Error(`Could not determine root key for a YAML pair in ${filePath}.`);
-        }
-        return getSplitFilePath(filePath, key);
-    });
-    const collisions = await findExistingFiles(outputPaths.filter(outputPath => !sameFilePath(outputPath, filePath)));
+    const outputPaths = destinations.flatMap(destination => [
+        destination.localFile,
+        destination.globalFile,
+    ]).filter((outputPath): outputPath is string => Boolean(outputPath));
+    const collisions = await findExistingFiles(outputPaths);
     if (collisions.length > 0) {
         throw new Error(`Cannot split YAML because these files already exist: ${collisions.join(", ")}`);
     }
 
     const createdFiles: string[] = [];
     const removedKeys: string[] = [];
-    let sourceReplacement: { tempPath: string; finalPath: string } | undefined;
 
-    for (const pair of pairsToSplit) {
-        const key = getPairKey(pair);
-        if (!key) {
+    for (const destination of destinations) {
+        const pair = findRootPair(root, destination.rootKey);
+        if (!pair) {
             continue;
         }
 
-        const splitDocument = new Document();
-        if (document.directives) {
-            splitDocument.directives = document.directives.clone();
+        const filesToWrite = [destination.localFile, destination.globalFile]
+            .filter((outputPath): outputPath is string => Boolean(outputPath));
+
+        for (const outputPath of filesToWrite) {
+            const splitDocument = createSplitDocument(document, schemaPair, pair);
+            await fs.promises.writeFile(outputPath, splitDocument.toString(), { encoding: "utf8", flag: "wx" });
+            createdFiles.push(outputPath);
         }
 
-        const splitRoot = new YAMLMap(splitDocument.schema);
-        if (schemaPair) {
-            splitRoot.items.push(schemaPair.clone(splitDocument.schema));
+        if (!removedKeys.includes(destination.rootKey)) {
+            removedKeys.push(destination.rootKey);
         }
-        splitRoot.items.push(pair.clone(splitDocument.schema));
-        splitDocument.contents = splitRoot;
-
-        const splitFilePath = getSplitFilePath(filePath, key);
-        if (sameFilePath(splitFilePath, filePath)) {
-            const tempPath = `${filePath}.${process.pid}.${Date.now()}.split.tmp`;
-            await fs.promises.writeFile(tempPath, splitDocument.toString(), { encoding: "utf8", flag: "wx" });
-            sourceReplacement = { tempPath, finalPath: splitFilePath };
-        } else {
-            await fs.promises.writeFile(splitFilePath, splitDocument.toString(), { encoding: "utf8", flag: "wx" });
-        }
-        createdFiles.push(splitFilePath);
-        removedKeys.push(key);
     }
 
-    if (sourceReplacement) {
-        await fs.promises.unlink(filePath);
-        await fs.promises.rename(sourceReplacement.tempPath, sourceReplacement.finalPath);
-    } else if (removedKeys.length > 0) {
-        const removedKeySet = new Set(removedKeys);
-        root.items = root.items.filter(pair => {
-            const key = getPairKey(pair);
-            return key === undefined || !removedKeySet.has(key);
-        });
-        await fs.promises.writeFile(filePath, document.toString(), "utf8");
+    if (removedKeys.length > 0) {
         await fs.promises.unlink(filePath);
     }
 
@@ -176,30 +153,24 @@ export function predictRenderCvSourceFileName(cvName: string): string {
     return `${sourceStem}.yaml`;
 }
 
-function getSplitFilePath(sourceFilePath: string, rootKey: string): string {
-    const sourceDirectory = path.dirname(sourceFilePath);
-    const sourceStem = getSplitBaseStem(sourceFilePath);
-    return path.join(sourceDirectory, `${sourceStem}_${sanitizeFileNamePart(rootKey)}.yaml`);
-}
-
-function getSplitBaseStem(sourceFilePath: string): string {
-    const sourceStem = path.parse(sourceFilePath).name;
-    return sourceStem.endsWith("_CV") ? sourceStem.slice(0, -3) : sourceStem;
-}
-
-function sanitizeFileNamePart(value: string): string {
-    const sanitized = value
-        .trim()
-        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
-        .replace(/\s+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_+|_+$/g, "");
-
-    return sanitized || "section";
-}
-
 function findRootPair(root: YAMLMap, key: string): Pair | undefined {
     return root.items.find(pair => getPairKey(pair) === key);
+}
+
+function createSplitDocument(sourceDocument: Document, schemaPair: Pair | undefined, rootPair: Pair): Document {
+    const splitDocument = new Document();
+    if (sourceDocument.directives) {
+        splitDocument.directives = sourceDocument.directives.clone();
+    }
+
+    const splitRoot = new YAMLMap(splitDocument.schema);
+    if (schemaPair) {
+        splitRoot.items.push(schemaPair.clone(splitDocument.schema));
+    }
+    splitRoot.items.push(rootPair.clone(splitDocument.schema));
+    splitDocument.contents = splitRoot;
+
+    return splitDocument;
 }
 
 function getPairKey(pair: Pair): string | undefined {
@@ -241,12 +212,8 @@ function uniqueFilePaths(filePaths: string[]): string[] {
     });
 }
 
-function sameFilePath(left: string, right: string): boolean {
-    return normalizeFilePathForComparison(left) === normalizeFilePathForComparison(right);
-}
-
 function normalizeFilePathForComparison(filePath: string): string {
-    const normalized = path.resolve(filePath);
+    const normalized = filePath;
     return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 

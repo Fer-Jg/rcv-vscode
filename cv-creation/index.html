@@ -15,7 +15,7 @@
       <header>
         <div>
           <h1>Create CV</h1>
-          <p class="muted">Configure the starter file and templates in one place.</p>
+          <p class="muted">Configure the starter file, folder, and local/global config files.</p>
         </div>
         <div class="folder" id="target-folder" title=""></div>
       </header>
@@ -23,20 +23,27 @@
       <form id="cv-form">
         <div id="workspace-warning" class="workspace-warning" hidden>Open a workspace folder before creating a CV.</div>
 
-        <div class="field">
-          <label for="cv-name">CV name</label>
-          <input id="cv-name" name="cvName" type="text" autocomplete="name" placeholder="John Doe" required />
-          <p class="muted">This is passed to RenderCV as the full name for the new YAML file.</p>
+        <div class="grid">
+          <div class="field">
+            <label for="person-name">Person</label>
+            <input id="person-name" name="personName" type="text" autocomplete="name" placeholder="John Doe" required />
+            <p class="muted">The CV owner's full name. This is passed to RenderCV.</p>
+          </div>
+          <div class="field">
+            <label for="cv-name">CV name</label>
+            <input id="cv-name" name="cvName" type="text" placeholder="john_doe_main" required />
+            <p class="muted">The folder and output identity under yamls and outputs.</p>
+          </div>
         </div>
 
         <div class="grid">
           <section class="option-panel">
             <div class="switch-row">
               <div>
-                <div class="label">Override theme</div>
-                <p class="muted">Use RenderCV's default unless enabled.</p>
+                <div class="label">Local design</div>
+                <p class="muted" id="design-help">Use globals/design.yaml unless enabled.</p>
               </div>
-              <label class="switch" title="Override theme">
+              <label class="switch" title="Use local design">
                 <input id="theme-enabled" type="checkbox" />
                 <span class="track"></span>
               </label>
@@ -45,15 +52,19 @@
               <label for="theme">Theme</label>
               <select id="theme"></select>
             </div>
+            <label id="design-global-row" class="check-row compact" hidden>
+              <input id="design-global" type="checkbox" />
+              <span>Also use this as global</span>
+            </label>
           </section>
 
           <section class="option-panel">
             <div class="switch-row">
               <div>
-                <div class="label">Override locale</div>
-                <p class="muted">Use RenderCV's default unless enabled.</p>
+                <div class="label">Local locale</div>
+                <p class="muted" id="locale-help">Use globals/locale.yaml unless enabled.</p>
               </div>
-              <label class="switch" title="Override locale">
+              <label class="switch" title="Use local locale">
                 <input id="locale-enabled" type="checkbox" />
                 <span class="track"></span>
               </label>
@@ -62,8 +73,29 @@
               <label for="locale">Locale</label>
               <select id="locale"></select>
             </div>
+            <label id="locale-global-row" class="check-row compact" hidden>
+              <input id="locale-global" type="checkbox" />
+              <span>Also use this as global</span>
+            </label>
           </section>
         </div>
+
+        <section class="option-panel">
+          <div class="switch-row">
+            <div>
+              <div class="label">Local settings</div>
+              <p class="muted" id="settings-help">Use globals/settings.yaml unless enabled.</p>
+            </div>
+            <label class="switch" title="Use local settings">
+              <input id="settings-enabled" type="checkbox" />
+              <span class="track"></span>
+            </label>
+          </div>
+          <label id="settings-global-row" class="check-row compact" hidden>
+            <input id="settings-global" type="checkbox" />
+            <span>Also use this as global</span>
+          </label>
+        </section>
 
         <div class="grid">
           <label class="check-row">

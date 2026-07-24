@@ -6,7 +6,12 @@ let selectedCv = "";
 const listEl = document.getElementById("cv-list");
 
 function getFileName(filePath) {
-    return filePath.split(/[\\/]/).pop() || filePath;
+    const parts = filePath.split(/[\\/]/);
+    const fileName = parts.pop() || filePath;
+    if (fileName.toLowerCase() === "cv.yaml" && parts.length > 0) {
+        return parts.pop() || fileName;
+    }
+    return fileName;
 }
 
 function render() {
