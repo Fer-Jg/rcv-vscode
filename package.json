@@ -113,12 +113,12 @@
       "explorer/context": [
         {
           "command": "rendercv-vscode.previewFileAsCV",
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename == cv.yaml || resourceFilename == cv.yml",
           "group": "navigation"
         },
         {
           "command": "rendercv-vscode.revealOutputPdf",
-          "when": "resourceFilename == cv.yaml",
+          "when": "resourceFilename == cv.yaml || resourceFilename == cv.yml",
           "group": "navigation"
         }
       ],
