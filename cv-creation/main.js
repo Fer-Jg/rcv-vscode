@@ -6,6 +6,9 @@ const targetFolder = document.getElementById("target-folder");
 const workspaceWarning = document.getElementById("workspace-warning");
 const personName = document.getElementById("person-name");
 const cvName = document.getElementById("cv-name");
+const outputFolderWarning = document.getElementById("output-folder-warning");
+const outputFolderPath = document.getElementById("output-folder-path");
+const deleteOutputFolder = document.getElementById("delete-output-folder");
 const themeEnabled = document.getElementById("theme-enabled");
 const themeWrap = document.getElementById("theme-wrap");
 const theme = document.getElementById("theme");
@@ -27,6 +30,8 @@ const markdownTemplates = document.getElementById("markdown-templates");
 const commandPreview = document.getElementById("command-preview");
 const status = document.getElementById("status");
 const createButton = document.getElementById("create-button");
+let outputFolderExists = false;
+let outputFolderCheckTimer;
 
 targetFolder.textContent = state.targetFolder || "No workspace open";
 targetFolder.title = state.targetFolder || "No workspace open";
@@ -108,6 +113,7 @@ function buildOptions() {
     saveSettingsAsGlobal: settingsGlobal.checked && !state.globals.settings,
     createTypstTemplates: typstTemplates.checked,
     createMarkdownTemplates: markdownTemplates.checked,
+    deleteExistingOutputFolder: deleteOutputFolder.checked,
   };
 }
 
@@ -131,12 +137,35 @@ function updatePreview() {
   }
   args.push(quoteArg(options.personName));
   commandPreview.textContent = `${args.join(" ")}\nfolder: ${options.cvName || "{cv_name}"}`;
+  scheduleOutputFolderCheck(options.cvName);
 }
 
 function setStatus(kind, message) {
   status.className = "status" + (kind === "error" || kind === "success" ? ` ${kind}` : "");
   status.textContent = message || "";
   createButton.disabled = !state.hasWorkspace || kind === "busy";
+}
+
+function scheduleOutputFolderCheck(sanitizedCvName) {
+  window.clearTimeout(outputFolderCheckTimer);
+  if (!state.hasWorkspace || !sanitizedCvName) {
+    setOutputFolderWarning(false, "");
+    return;
+  }
+
+  outputFolderCheckTimer = window.setTimeout(() => {
+    vscode.postMessage({ command: "checkOutputFolder", cvName: sanitizedCvName });
+  }, 150);
+}
+
+function setOutputFolderWarning(exists, folderPath) {
+  outputFolderExists = exists;
+  outputFolderWarning.hidden = !exists;
+  outputFolderPath.textContent = folderPath;
+  outputFolderPath.title = folderPath;
+  if (!exists) {
+    deleteOutputFolder.checked = false;
+  }
 }
 
 form.addEventListener("input", updatePreview);
@@ -159,6 +188,11 @@ form.addEventListener("submit", event => {
     setStatus("error", "Enter a CV name before creating the folder.");
     return;
   }
+  if (outputFolderExists && !options.deleteExistingOutputFolder) {
+    deleteOutputFolder.focus();
+    setStatus("error", "A matching output folder already exists. Acknowledge deleting it before continuing.");
+    return;
+  }
 
   setStatus("busy", "Creating CV...");
   vscode.postMessage({ command: "createCv", options });
@@ -167,6 +201,12 @@ form.addEventListener("submit", event => {
 window.addEventListener("message", event => {
   if (event.data.command === "status") {
     setStatus(event.data.status, event.data.message);
+  }
+  if (event.data.command === "outputFolderStatus") {
+    if (event.data.cvName !== buildOptions().cvName) {
+      return;
+    }
+    setOutputFolderWarning(event.data.exists, event.data.outputFolder);
   }
 });
 

@@ -71,6 +71,7 @@ interface CvCreationOptions {
     saveSettingsAsGlobal: boolean;
     createTypstTemplates: boolean;
     createMarkdownTemplates: boolean;
+    deleteExistingOutputFolder: boolean;
 }
 
 interface CvCreationResult {
@@ -228,6 +229,9 @@ async function startCvCreationWizard() {
         }
 
         if (message.command !== "createCv") {
+            if (message.command === "checkOutputFolder") {
+                await postOutputFolderStatus(message.cvName, workspaceFolder);
+            }
             return;
         }
 
@@ -299,7 +303,11 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
         throw new Error(`Cannot create CV because this folder already exists: ${cvLayout.cvYamlFolder}. Choose a different CV name.`);
     }
     if (await pathExists(cvLayout.outputFolder)) {
-        throw new Error(`Cannot create CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name.`);
+        if (!normalizedOptions.deleteExistingOutputFolder) {
+            throw new Error(`Cannot create CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name or acknowledge deleting it.`);
+        }
+
+        await deleteExistingCvOutputFolder(cvLayout.outputFolder, cvLayout.outputsRoot);
     }
     const preflight = await preflightYamlSplitFiles(sourceFilePath, splitDestinations);
     if (preflight.conflicts.length > 0) {
@@ -331,6 +339,47 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
         splitFileCount: splitResult.createdFiles.length,
         skippedSplitReason: splitResult.skippedReason,
     };
+}
+
+async function postOutputFolderStatus(cvName: string | undefined, workspaceFolder: vscode.WorkspaceFolder | undefined): Promise<void> {
+    if (!workspaceFolder || !cvName) {
+        cvCreationPanel?.webview.postMessage({
+            command: "outputFolderStatus",
+            cvName,
+            exists: false,
+            outputFolder: "",
+        });
+        return;
+    }
+
+    try {
+        const cvLayout = getCvFolderLayout(workspaceFolder, cvName);
+        cvCreationPanel?.webview.postMessage({
+            command: "outputFolderStatus",
+            cvName: cvLayout.cvName,
+            exists: await pathExists(cvLayout.outputFolder),
+            outputFolder: cvLayout.outputFolder,
+        });
+    } catch {
+        cvCreationPanel?.webview.postMessage({
+            command: "outputFolderStatus",
+            cvName,
+            exists: false,
+            outputFolder: "",
+        });
+    }
+}
+
+async function deleteExistingCvOutputFolder(outputFolder: string, outputsRoot: string): Promise<void> {
+    const resolvedOutputFolder = path.resolve(outputFolder);
+    const resolvedOutputsRoot = path.resolve(outputsRoot);
+    const relativePath = path.relative(resolvedOutputsRoot, resolvedOutputFolder);
+    if (!relativePath || relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+        throw new Error(`Refusing to delete output folder outside outputs root: ${outputFolder}`);
+    }
+
+    postCvCreationStatus("busy", "Deleting existing output folder...");
+    await fs.promises.rm(resolvedOutputFolder, { recursive: true, force: true });
 }
 
 function buildNewCvArgs(options: CvCreationOptions): string[] {

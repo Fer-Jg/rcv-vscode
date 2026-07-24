@@ -102,6 +102,31 @@ button:focus-visible {
   background: var(--vscode-sideBar-background);
 }
 
+.danger-panel {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  border-radius: 6px;
+  background: var(--vscode-inputValidation-warningBackground);
+  color: var(--vscode-inputValidation-warningForeground);
+}
+
+.danger-panel[hidden] {
+  display: none;
+}
+
+.danger-panel .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.danger-check {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+}
+
 .switch-row,
 .check-row {
   display: flex;
