@@ -48,8 +48,8 @@
         "title": "Preview CV from Sidebar"
       },
       {
-        "command": "rendercv-vscode.duplicateCV",
-        "title": "Duplicate CV"
+        "command": "rendercv-vscode.cloneCV",
+        "title": "Clone CV"
       },
       {
         "command": "rendercv-vscode.revealOutputPdf",
@@ -86,7 +86,7 @@
           "when": "false"
         },
         {
-          "command": "rendercv-vscode.duplicateCV",
+          "command": "rendercv-vscode.cloneCV",
           "when": "false"
         },
         {
@@ -124,7 +124,7 @@
       ],
       "webview/context": [
         {
-          "command": "rendercv-vscode.duplicateCV",
+          "command": "rendercv-vscode.cloneCV",
           "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
           "group": "inline"
         },

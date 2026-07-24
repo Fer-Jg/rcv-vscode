@@ -18,6 +18,13 @@ export interface SplitYamlResult {
     skippedReason?: string;
 }
 
+export type RootPairMutator = (rootPair: Pair, document: Document) => void;
+
+export interface RootKeySourceDestination extends SplitRootDestination {
+    sourceFile: string;
+    mutate?: RootPairMutator;
+}
+
 export interface PreflightResult {
     sourceFilePath: string;
     splitFilePaths: string[];
@@ -27,6 +34,34 @@ export interface PreflightResult {
 export async function parseYamlFile(filePath: string): Promise<Document> {
     const source = await fs.promises.readFile(filePath, "utf8");
     return parseYamlSource(source, filePath);
+}
+
+export function getRootKeyScalarValue(document: Document, rootKey: string, path: string[]): string | undefined {
+    const root = document.contents;
+    if (!isMap(root)) {
+        return undefined;
+    }
+
+    const pair = findRootPair(root, rootKey);
+    if (!pair) {
+        return undefined;
+    }
+
+    return getNestedScalarValue(pair.value, path);
+}
+
+export function setRootKeyScalarValue(document: Document, rootKey: string, path: string[], value: string): void {
+    const root = document.contents;
+    if (!isMap(root)) {
+        throw new Error("Expected a root YAML map.");
+    }
+
+    const pair = findRootPair(root, rootKey);
+    if (!pair) {
+        throw new Error(`Expected root key "${rootKey}".`);
+    }
+
+    setNestedScalarValue(pair.value, path, value, document);
 }
 
 export async function removeRootKeys(filePath: string, keys: string[]): Promise<void> {
@@ -145,6 +180,61 @@ export async function splitRootKeysToFiles(
     return { createdFiles, removedKeys, deletedSourceFile: removedKeys.length > 0 };
 }
 
+export async function writeRootKeysFromFiles(
+    destinations: RootKeySourceDestination[]
+): Promise<SplitYamlResult> {
+    const outputPaths = destinations.flatMap(destination => [
+        destination.localFile,
+        destination.globalFile,
+    ]).filter((outputPath): outputPath is string => Boolean(outputPath));
+    const collisions = await findExistingFiles(outputPaths);
+    if (collisions.length > 0) {
+        throw new Error(`Cannot write YAML because these files already exist: ${collisions.join(", ")}`);
+    }
+
+    const createdFiles: string[] = [];
+    const removedKeys: string[] = [];
+
+    for (const destination of destinations) {
+        const filesToWrite = [destination.localFile, destination.globalFile]
+            .filter((outputPath): outputPath is string => Boolean(outputPath));
+        if (filesToWrite.length === 0) {
+            continue;
+        }
+
+        const source = await fs.promises.readFile(destination.sourceFile, "utf8");
+        const document = parseYamlSource(source, destination.sourceFile);
+        const fileHeaderComments = extractLeadingComments(source);
+        const root = document.contents;
+        if (!isMap(root)) {
+            return {
+                createdFiles,
+                removedKeys,
+                deletedSourceFile: false,
+                skippedReason: `Expected a root YAML map in ${destination.sourceFile}.`,
+            };
+        }
+
+        const schemaPair = findRootPair(root, SCHEMA_ROOT_KEY);
+        const pair = findRootPair(root, destination.rootKey);
+        if (!pair) {
+            continue;
+        }
+
+        for (const outputPath of filesToWrite) {
+            const splitDocument = createSplitDocument(document, schemaPair, pair, fileHeaderComments, destination.mutate);
+            await fs.promises.writeFile(outputPath, splitDocument.toString(), { encoding: "utf8", flag: "wx" });
+            createdFiles.push(outputPath);
+        }
+
+        if (!removedKeys.includes(destination.rootKey)) {
+            removedKeys.push(destination.rootKey);
+        }
+    }
+
+    return { createdFiles, removedKeys, deletedSourceFile: false };
+}
+
 export function predictRenderCvSourceFileName(cvName: string): string {
     const sourceStem = `${cvName.trim().replace(/\s+/g, "_")}_CV`;
     if (!sourceStem || /[<>:"/\\|?*]/.test(sourceStem)) {
@@ -167,7 +257,8 @@ function createSplitDocument(
     sourceDocument: Document,
     schemaPair: Pair | undefined,
     rootPair: Pair,
-    fileHeaderComments?: string
+    fileHeaderComments?: string,
+    mutateRootPair?: RootPairMutator
 ): Document {
     const splitDocument = new Document();
     if (sourceDocument.directives) {
@@ -185,8 +276,64 @@ function createSplitDocument(
     removeDuplicateHeaderComment(clonedRootPair, headerComments);
     splitRoot.items.push(clonedRootPair);
     splitDocument.contents = splitRoot;
+    mutateRootPair?.(clonedRootPair, splitDocument);
 
     return splitDocument;
+}
+
+function getNestedScalarValue(node: unknown, path: string[]): string | undefined {
+    let current = node;
+
+    for (const key of path) {
+        if (!isMap(current)) {
+            return undefined;
+        }
+
+        const pair = findRootPair(current, key);
+        if (!pair) {
+            return undefined;
+        }
+        current = pair.value;
+    }
+
+    if (!isScalar(current) || current.value === null || current.value === undefined) {
+        return undefined;
+    }
+
+    return String(current.value);
+}
+
+function setNestedScalarValue(node: unknown, path: string[], value: string, document: Document): void {
+    if (path.length === 0) {
+        throw new Error("Expected a non-empty YAML path.");
+    }
+
+    let current = node;
+    for (const key of path.slice(0, -1)) {
+        if (!isMap(current)) {
+            throw new Error(`Expected YAML map before "${key}".`);
+        }
+
+        let pair = findRootPair(current, key);
+        if (!pair) {
+            pair = document.createPair(key, new YAMLMap(document.schema)) as Pair;
+            current.items.push(pair);
+        }
+        current = pair.value;
+    }
+
+    if (!isMap(current)) {
+        throw new Error(`Expected YAML map before "${path.at(-1)}".`);
+    }
+
+    const leafKey = path[path.length - 1];
+    const pair = findRootPair(current, leafKey);
+    if (pair) {
+        pair.value = document.createNode(value);
+        return;
+    }
+
+    current.items.push(document.createPair(leafKey, value) as Pair);
 }
 
 function copyDocumentHeaderComments(

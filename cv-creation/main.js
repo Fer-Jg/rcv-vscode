@@ -1,7 +1,10 @@
 const vscode = acquireVsCodeApi();
 const state = window.rendercvCreateCvState;
+const isClone = state.mode === "clone";
 
 const form = document.getElementById("cv-form");
+const wizardTitle = document.getElementById("wizard-title");
+const wizardSubtitle = document.getElementById("wizard-subtitle");
 const targetFolder = document.getElementById("target-folder");
 const workspaceWarning = document.getElementById("workspace-warning");
 const personName = document.getElementById("person-name");
@@ -27,6 +30,7 @@ const settingsGlobalRow = document.getElementById("settings-global-row");
 const settingsGlobal = document.getElementById("settings-global");
 const typstTemplates = document.getElementById("typst-templates");
 const markdownTemplates = document.getElementById("markdown-templates");
+const previewLabel = document.getElementById("preview-label");
 const commandPreview = document.getElementById("command-preview");
 const status = document.getElementById("status");
 const createButton = document.getElementById("create-button");
@@ -37,17 +41,27 @@ targetFolder.textContent = state.targetFolder || "No workspace open";
 targetFolder.title = state.targetFolder || "No workspace open";
 workspaceWarning.hidden = state.hasWorkspace;
 createButton.disabled = !state.hasWorkspace;
+wizardTitle.textContent = isClone ? "Clone CV" : "Create CV";
+wizardSubtitle.textContent = isClone
+  ? "Clone the selected CV data and choose how its configuration should be carried over."
+  : "Configure the starter file, folder, and local/global config files.";
+previewLabel.textContent = isClone ? "Clone preview" : "Command preview";
+createButton.textContent = isClone ? "Clone CV" : "Create CV";
+personName.value = state.initial?.personName || "";
+cvName.value = state.initial?.cvName || "";
 
 for (const option of state.themes) {
-  theme.appendChild(new Option(option, option, option === "classic", option === "classic"));
+  const selectedTheme = state.initial?.theme || "classic";
+  theme.appendChild(new Option(option, option, option === selectedTheme, option === selectedTheme));
 }
 
 for (const option of state.locales) {
-  locale.appendChild(new Option(option, option, option === "english", option === "english"));
+  const selectedLocale = state.initial?.locale || "english";
+  locale.appendChild(new Option(option, option, option === selectedLocale, option === selectedLocale));
 }
 
-function initConfigControl(input, help, globalRow, globalInput, hasGlobal, missingMessage, existingMessage) {
-  input.checked = !hasGlobal;
+function initConfigControl(input, help, globalRow, globalInput, hasGlobal, preferredLocal, missingMessage, existingMessage) {
+  input.checked = hasGlobal ? Boolean(preferredLocal) : true;
   input.disabled = !hasGlobal;
   help.textContent = hasGlobal ? existingMessage : missingMessage;
   globalRow.hidden = hasGlobal;
@@ -60,6 +74,7 @@ initConfigControl(
   designGlobalRow,
   designGlobal,
   state.globals.design,
+  state.initial?.useLocalDesign,
   "No globals/design.yaml exists, so this CV must create local design.",
   "Use globals/design.yaml unless enabled."
 );
@@ -69,6 +84,7 @@ initConfigControl(
   localeGlobalRow,
   localeGlobal,
   state.globals.locale,
+  state.initial?.useLocalLocale,
   "No globals/locale.yaml exists, so this CV must create local locale.",
   "Use globals/locale.yaml unless enabled."
 );
@@ -78,6 +94,7 @@ initConfigControl(
   settingsGlobalRow,
   settingsGlobal,
   state.globals.settings,
+  state.initial?.useLocalSettings,
   "No globals/settings.yaml exists, so this CV must create local settings.",
   "Use globals/settings.yaml unless enabled."
 );
@@ -122,21 +139,32 @@ function updatePreview() {
   localeWrap.hidden = !localeEnabled.checked;
 
   const options = buildOptions();
-  const args = ["rendercv", "new"];
-  if (options.theme) {
-    args.push("--theme", options.theme);
+  if (isClone) {
+    commandPreview.textContent = [
+      `clone: ${state.clone?.sourceCvName || "{source_cv}"}`,
+      `person: ${quoteArg(options.personName)}`,
+      `folder: ${options.cvName || "{cv_name}"}`,
+      `design: ${options.useLocalDesign ? "local" : "global"}${options.theme ? ` (${options.theme})` : ""}`,
+      `locale: ${options.useLocalLocale ? "local" : "global"}${options.locale ? ` (${options.locale})` : ""}`,
+      `settings: ${options.useLocalSettings ? "local" : "global"}`,
+    ].join("\n");
+  } else {
+    const args = ["rendercv", "new"];
+    if (options.theme) {
+      args.push("--theme", options.theme);
+    }
+    if (options.locale) {
+      args.push("--locale", options.locale);
+    }
+    if (options.createTypstTemplates) {
+      args.push("--create-typst-templates");
+    }
+    if (options.createMarkdownTemplates) {
+      args.push("--create-markdown-templates");
+    }
+    args.push(quoteArg(options.personName));
+    commandPreview.textContent = `${args.join(" ")}\nfolder: ${options.cvName || "{cv_name}"}`;
   }
-  if (options.locale) {
-    args.push("--locale", options.locale);
-  }
-  if (options.createTypstTemplates) {
-    args.push("--create-typst-templates");
-  }
-  if (options.createMarkdownTemplates) {
-    args.push("--create-markdown-templates");
-  }
-  args.push(quoteArg(options.personName));
-  commandPreview.textContent = `${args.join(" ")}\nfolder: ${options.cvName || "{cv_name}"}`;
   scheduleOutputFolderCheck(options.cvName);
 }
 
@@ -188,14 +216,19 @@ form.addEventListener("submit", event => {
     setStatus("error", "Enter a CV name before creating the folder.");
     return;
   }
+  if (isClone && options.cvName === state.clone?.sourceCvName) {
+    cvName.focus();
+    setStatus("error", "Choose a different CV name before cloning.");
+    return;
+  }
   if (outputFolderExists && !options.deleteExistingOutputFolder) {
     deleteOutputFolder.focus();
     setStatus("error", "A matching output folder already exists. Acknowledge deleting it before continuing.");
     return;
   }
 
-  setStatus("busy", "Creating CV...");
-  vscode.postMessage({ command: "createCv", options });
+  setStatus("busy", isClone ? "Cloning CV..." : "Creating CV...");
+  vscode.postMessage({ command: isClone ? "cloneCv" : "createCv", options });
 });
 
 window.addEventListener("message", event => {

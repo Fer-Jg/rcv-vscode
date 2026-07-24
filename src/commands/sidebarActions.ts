@@ -4,13 +4,19 @@ import * as path from "path";
 import * as rcv from "../utils/rcv";
 import { logger } from "../utils/logging";
 import {
+    getRootKeyScalarValue,
+    parseYamlFile,
     predictRenderCvSourceFileName,
     preflightYamlSplitFiles,
+    setRootKeyScalarValue,
     splitRootKeysToFiles,
+    writeRootKeysFromFiles,
+    type RootKeySourceDestination,
     type SplitRootDestination,
 } from "../utils/yamlDocuments";
 import {
     getCvFolderLayout,
+    getCvFolderLayoutForCvFile,
     getGlobalConfigFiles,
     getWorkspaceLayout,
     pathExists,
@@ -20,6 +26,9 @@ let contextCV = "";
 let reloadCvsHandler: (() => void) | undefined;
 let extensionUri: vscode.Uri | undefined;
 let cvCreationPanel: vscode.WebviewPanel | undefined;
+
+type CvWizardMode = "create" | "clone";
+type ConfigSourceChoice = "local" | "global" | "missing";
 
 const themes = [
     "classic",
@@ -77,6 +86,51 @@ interface CvCreationOptions {
 interface CvCreationResult {
     splitFileCount: number;
     skippedSplitReason?: string;
+}
+
+interface CvCreationWizardState {
+    mode: CvWizardMode;
+    themes: string[];
+    locales: string[];
+    targetFolder: string;
+    hasWorkspace: boolean;
+    globals: { design: boolean; locale: boolean; settings: boolean };
+    initial: {
+        personName: string;
+        cvName: string;
+        theme?: string;
+        locale?: string;
+        useLocalDesign?: boolean;
+        useLocalLocale?: boolean;
+        useLocalSettings?: boolean;
+    };
+    clone?: {
+        sourceCvFile: string;
+        sourceCvName: string;
+        sourceChoices: {
+            design: ConfigSourceChoice;
+            locale: ConfigSourceChoice;
+            settings: ConfigSourceChoice;
+        };
+    };
+}
+
+interface CloneSourceConfig {
+    sourceFile?: string;
+    choice: ConfigSourceChoice;
+}
+
+interface CloneSourceState {
+    sourceLayout: NonNullable<ReturnType<typeof getCvFolderLayoutForCvFile>>;
+    personName: string;
+    defaultCvName: string;
+    theme?: string;
+    locale?: string;
+    configs: {
+        design: CloneSourceConfig;
+        locale: CloneSourceConfig;
+        settings: CloneSourceConfig;
+    };
 }
 
 function temporaryNotification(message: string, duration: number = 3000) {
@@ -171,14 +225,14 @@ export function openCvsHelp() {
 }
 
 export function newCvFromGlobal() {
-    startCvCreationWizard();
+    startCvCreationWizard({ mode: "create" });
 }
 
 export function newCv() {
-    startCvCreationWizard();
+    startCvCreationWizard({ mode: "create" });
 }
 
-async function startCvCreationWizard() {
+async function startCvCreationWizard(request: { mode: "create" } | { mode: "clone"; sourceCvFile: string }) {
     if (!extensionUri) {
         vscode.window.showErrorMessage("RenderCV extension assets are not ready yet.");
         return;
@@ -201,10 +255,62 @@ async function startCvCreationWizard() {
             settings: fs.existsSync(globals.settings),
         }
         : { design: false, locale: false, settings: false };
+    let cloneState: CloneSourceState | undefined;
+
+    if (request.mode === "clone") {
+        if (!workspaceFolder) {
+            vscode.window.showErrorMessage("Open a workspace folder before cloning a CV.");
+            return;
+        }
+
+        try {
+            cloneState = await getCloneSourceState(request.sourceCvFile, workspaceFolder);
+        } catch (error) {
+            logger.error(`Failed to prepare clone wizard: ${error}`);
+            vscode.window.showErrorMessage(`Failed to prepare clone wizard: ${error}`);
+            return;
+        }
+    }
+
+    const wizardState: CvCreationWizardState = {
+        mode: request.mode,
+        themes,
+        locales,
+        targetFolder,
+        hasWorkspace: Boolean(workspaceFolder),
+        globals: globalState,
+        initial: cloneState
+            ? {
+                personName: cloneState.personName,
+                cvName: cloneState.defaultCvName,
+                theme: cloneState.theme,
+                locale: cloneState.locale,
+                useLocalDesign: cloneState.configs.design.choice !== "global",
+                useLocalLocale: cloneState.configs.locale.choice !== "global",
+                useLocalSettings: cloneState.configs.settings.choice !== "global",
+            }
+            : {
+                personName: "",
+                cvName: "",
+                theme: "classic",
+                locale: "english",
+            },
+        clone: cloneState && request.mode === "clone"
+            ? {
+                sourceCvFile: request.sourceCvFile,
+                sourceCvName: cloneState.sourceLayout.cvName,
+                sourceChoices: {
+                    design: cloneState.configs.design.choice,
+                    locale: cloneState.configs.locale.choice,
+                    settings: cloneState.configs.settings.choice,
+                },
+            }
+            : undefined,
+    };
 
     cvCreationPanel = vscode.window.createWebviewPanel(
-        "rendercvCreateCv",
-        "Create CV",
+        request.mode === "clone" ? "rendercvCloneCv" : "rendercvCreateCv",
+        request.mode === "clone" ? "Clone CV" : "Create CV",
         vscode.ViewColumn.One,
         {
             enableScripts: true,
@@ -212,13 +318,7 @@ async function startCvCreationWizard() {
             localResourceRoots: [assetRoot],
         }
     );
-    cvCreationPanel.webview.html = getCvCreationHtml(cvCreationPanel.webview, assetRoot, {
-        themes,
-        locales,
-        targetFolder,
-        hasWorkspace: Boolean(workspaceFolder),
-        globals: globalState,
-    });
+    cvCreationPanel.webview.html = getCvCreationHtml(cvCreationPanel.webview, assetRoot, wizardState);
     cvCreationPanel.onDidDispose(() => {
         cvCreationPanel = undefined;
     });
@@ -228,7 +328,7 @@ async function startCvCreationWizard() {
             return;
         }
 
-        if (message.command !== "createCv") {
+        if (message.command !== "createCv" && message.command !== "cloneCv") {
             if (message.command === "checkOutputFolder") {
                 await postOutputFolderStatus(message.cvName, workspaceFolder);
             }
@@ -236,24 +336,26 @@ async function startCvCreationWizard() {
         }
 
         if (!workspaceFolder) {
-            postCvCreationStatus("error", "Open a workspace folder before creating a CV.");
+            postCvCreationStatus("error", `Open a workspace folder before ${request.mode === "clone" ? "cloning" : "creating"} a CV.`);
             return;
         }
 
         try {
-            const result = await createCvFromOptions(message.options, workspaceFolder);
+            const result = request.mode === "clone"
+                ? await cloneCvFromOptions(message.options, request.sourceCvFile, workspaceFolder)
+                : await createCvFromOptions(message.options, workspaceFolder);
             if (result.skippedSplitReason) {
-                postCvCreationStatus("success", `New CV created. Split skipped: ${result.skippedSplitReason}`);
-                vscode.window.showWarningMessage(`New CV created, but splitting was skipped: ${result.skippedSplitReason}`);
+                postCvCreationStatus("success", `CV ${request.mode === "clone" ? "cloned" : "created"}. Split skipped: ${result.skippedSplitReason}`);
+                vscode.window.showWarningMessage(`CV ${request.mode === "clone" ? "cloned" : "created"}, but splitting was skipped: ${result.skippedSplitReason}`);
             } else {
-                postCvCreationStatus("success", `New CV created and split into ${result.splitFileCount} files.`);
-                vscode.window.showInformationMessage(`New CV created and split into ${result.splitFileCount} files.`);
+                postCvCreationStatus("success", `CV ${request.mode === "clone" ? "cloned" : "created"} into ${result.splitFileCount} files.`);
+                vscode.window.showInformationMessage(`CV ${request.mode === "clone" ? "cloned" : "created"} into ${result.splitFileCount} files.`);
             }
             reloadCvs();
         } catch (error) {
-            logger.error(`Failed to create CV: ${error}`);
-            postCvCreationStatus("error", `Failed to create CV: ${error}`);
-            vscode.window.showErrorMessage(`Failed to create CV: ${error}`);
+            logger.error(`Failed to ${request.mode} CV: ${error}`);
+            postCvCreationStatus("error", `Failed to ${request.mode} CV: ${error}`);
+            vscode.window.showErrorMessage(`Failed to ${request.mode} CV: ${error}`);
         }
     });
 }
@@ -341,6 +443,72 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
     };
 }
 
+async function cloneCvFromOptions(options: CvCreationOptions, sourceCvFile: string, workspaceFolder: vscode.WorkspaceFolder): Promise<CvCreationResult> {
+    const cloneState = await getCloneSourceState(sourceCvFile, workspaceFolder);
+    const personName = options.personName.trim();
+    if (!personName) {
+        throw new Error("Person is required.");
+    }
+
+    const cvLayout = getCvFolderLayout(workspaceFolder, options.cvName);
+    if (cvLayout.cvName === cloneState.sourceLayout.cvName) {
+        throw new Error("Choose a different CV name before cloning.");
+    }
+
+    const globals = getGlobalConfigFiles(cvLayout);
+    const globalExists = {
+        design: await pathExists(globals.design),
+        locale: await pathExists(globals.locale),
+        settings: await pathExists(globals.settings),
+    };
+    const normalizedOptions: CvCreationOptions = {
+        ...options,
+        personName,
+        cvName: cvLayout.cvName,
+        useLocalDesign: options.useLocalDesign || !globalExists.design,
+        useLocalLocale: options.useLocalLocale || !globalExists.locale,
+        useLocalSettings: options.useLocalSettings || !globalExists.settings,
+        saveDesignAsGlobal: options.saveDesignAsGlobal && !globalExists.design,
+        saveLocaleAsGlobal: options.saveLocaleAsGlobal && !globalExists.locale,
+        saveSettingsAsGlobal: options.saveSettingsAsGlobal && !globalExists.settings,
+    };
+
+    postCvCreationStatus("busy", "Checking output files...");
+    if (await pathExists(cvLayout.cvYamlFolder)) {
+        throw new Error(`Cannot clone CV because this folder already exists: ${cvLayout.cvYamlFolder}. Choose a different CV name.`);
+    }
+    if (await pathExists(cvLayout.outputFolder)) {
+        if (!normalizedOptions.deleteExistingOutputFolder) {
+            throw new Error(`Cannot clone CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name or acknowledge deleting it.`);
+        }
+
+        await deleteExistingCvOutputFolder(cvLayout.outputFolder, cvLayout.outputsRoot);
+    }
+
+    const destinations = buildCloneDestinations(normalizedOptions, cvLayout, globals, cloneState);
+    assertCloneRequiredConfigsExist(normalizedOptions, cloneState);
+    const outputPaths = destinations.flatMap(destination => [
+        destination.localFile,
+        destination.globalFile,
+    ]).filter((filePath): filePath is string => Boolean(filePath));
+    const existingOutputs = await Promise.all(outputPaths.map(async filePath => await pathExists(filePath) ? filePath : undefined));
+    const conflicts = existingOutputs.filter((filePath): filePath is string => Boolean(filePath));
+    if (conflicts.length > 0) {
+        throw new Error(`Cannot clone CV because these files already exist: ${conflicts.join(", ")}`);
+    }
+
+    postCvCreationStatus("busy", "Cloning CV files...");
+    await fs.promises.mkdir(cvLayout.cvYamlFolder, { recursive: true });
+    await fs.promises.mkdir(cvLayout.globalsFolder, { recursive: true });
+    await fs.promises.mkdir(cvLayout.outputsRoot, { recursive: true });
+    const result = await writeRootKeysFromFiles(destinations);
+
+    return {
+        splitFileCount: result.createdFiles.length,
+        skippedSplitReason: result.skippedReason,
+    };
+}
+
 async function postOutputFolderStatus(cvName: string | undefined, workspaceFolder: vscode.WorkspaceFolder | undefined): Promise<void> {
     if (!workspaceFolder || !cvName) {
         cvCreationPanel?.webview.postMessage({
@@ -425,6 +593,142 @@ function buildSplitDestinations(
     ];
 }
 
+function buildCloneDestinations(
+    options: CvCreationOptions,
+    cvLayout: ReturnType<typeof getCvFolderLayout>,
+    globals: ReturnType<typeof getGlobalConfigFiles>,
+    cloneState: CloneSourceState
+): RootKeySourceDestination[] {
+    const destinations: RootKeySourceDestination[] = [
+        {
+            rootKey: "cv",
+            sourceFile: cloneState.sourceLayout.cvFile,
+            localFile: cvLayout.cvFile,
+            mutate: (_rootPair, document) => setRootKeyScalarValue(document, "cv", ["name"], options.personName.trim()),
+        },
+    ];
+
+    const designFiles = getCloneOutputFiles(options.useLocalDesign, options.saveDesignAsGlobal, cvLayout.designFile, globals.design);
+    if (cloneState.configs.design.sourceFile && cloneOutputHasFiles(designFiles)) {
+        destinations.push({
+            rootKey: "design",
+            sourceFile: cloneState.configs.design.sourceFile,
+            localFile: designFiles.localFile,
+            globalFile: designFiles.globalFile,
+            mutate: options.theme
+                ? (_rootPair, document) => setRootKeyScalarValue(document, "design", ["theme"], options.theme!)
+                : undefined,
+        });
+    }
+
+    const localeFiles = getCloneOutputFiles(options.useLocalLocale, options.saveLocaleAsGlobal, cvLayout.localeFile, globals.locale);
+    if (cloneState.configs.locale.sourceFile && cloneOutputHasFiles(localeFiles)) {
+        destinations.push({
+            rootKey: "locale",
+            sourceFile: cloneState.configs.locale.sourceFile,
+            localFile: localeFiles.localFile,
+            globalFile: localeFiles.globalFile,
+            mutate: options.locale
+                ? (_rootPair, document) => setRootKeyScalarValue(document, "locale", ["language"], options.locale!)
+                : undefined,
+        });
+    }
+
+    const settingsFiles = getCloneOutputFiles(options.useLocalSettings, options.saveSettingsAsGlobal, cvLayout.settingsFile, globals.settings);
+    if (cloneState.configs.settings.sourceFile && cloneOutputHasFiles(settingsFiles)) {
+        destinations.push({
+            rootKey: "settings",
+            sourceFile: cloneState.configs.settings.sourceFile,
+            localFile: settingsFiles.localFile,
+            globalFile: settingsFiles.globalFile,
+        });
+    }
+
+    return destinations;
+}
+
+function assertCloneRequiredConfigsExist(options: CvCreationOptions, cloneState: CloneSourceState): void {
+    const requiredConfigs = [
+        { label: "design", required: options.useLocalDesign || options.saveDesignAsGlobal, config: cloneState.configs.design },
+        { label: "locale", required: options.useLocalLocale || options.saveLocaleAsGlobal, config: cloneState.configs.locale },
+        { label: "settings", required: options.useLocalSettings || options.saveSettingsAsGlobal, config: cloneState.configs.settings },
+    ];
+
+    const missing = requiredConfigs
+        .filter(item => item.required && !item.config.sourceFile)
+        .map(item => item.label);
+
+    if (missing.length > 0) {
+        throw new Error(`Cannot clone missing source configuration: ${missing.join(", ")}.`);
+    }
+}
+
+function getCloneOutputFiles(useLocal: boolean, saveAsGlobal: boolean, localFile: string, globalFile: string): { localFile?: string; globalFile?: string } {
+    return {
+        localFile: useLocal ? localFile : undefined,
+        globalFile: saveAsGlobal ? globalFile : undefined,
+    };
+}
+
+function cloneOutputHasFiles(files: { localFile?: string; globalFile?: string }): boolean {
+    return Boolean(files.localFile || files.globalFile);
+}
+
+async function getCloneSourceState(sourceCvFile: string, workspaceFolder: vscode.WorkspaceFolder): Promise<CloneSourceState> {
+    const sourceLayout = getCvFolderLayoutForCvFile(sourceCvFile);
+    if (!sourceLayout) {
+        throw new Error("Select a structured cv.yaml file to clone.");
+    }
+
+    const owningWorkspace = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(sourceCvFile));
+    if (!owningWorkspace || owningWorkspace.uri.fsPath !== workspaceFolder.uri.fsPath) {
+        throw new Error("The CV to clone must belong to the current workspace.");
+    }
+
+    if (!await pathExists(sourceLayout.cvFile)) {
+        throw new Error(`Cannot clone missing CV file: ${sourceLayout.cvFile}`);
+    }
+
+    const sourceDocument = await parseYamlFile(sourceLayout.cvFile);
+    const personName = getRootKeyScalarValue(sourceDocument, "cv", ["name"]) || "";
+    const globals = getGlobalConfigFiles(sourceLayout);
+    const design = await resolveCloneSourceConfig(sourceLayout.designFile, globals.design);
+    const locale = await resolveCloneSourceConfig(sourceLayout.localeFile, globals.locale);
+    const settings = await resolveCloneSourceConfig(sourceLayout.settingsFile, globals.settings);
+
+    return {
+        sourceLayout,
+        personName,
+        defaultCvName: await buildDefaultCloneCvName(workspaceFolder, sourceLayout.cvName),
+        theme: design.sourceFile ? getRootKeyScalarValue(await parseYamlFile(design.sourceFile), "design", ["theme"]) : undefined,
+        locale: locale.sourceFile ? getRootKeyScalarValue(await parseYamlFile(locale.sourceFile), "locale", ["language"]) : undefined,
+        configs: { design, locale, settings },
+    };
+}
+
+async function resolveCloneSourceConfig(localFile: string, globalFile: string): Promise<CloneSourceConfig> {
+    if (await pathExists(localFile)) {
+        return { sourceFile: localFile, choice: "local" };
+    }
+
+    if (await pathExists(globalFile)) {
+        return { sourceFile: globalFile, choice: "global" };
+    }
+
+    return { choice: "missing" };
+}
+
+async function buildDefaultCloneCvName(workspaceFolder: vscode.WorkspaceFolder, sourceCvName: string): Promise<string> {
+    let candidate = `${sourceCvName}_copy`;
+    let suffix = 2;
+    while (await pathExists(getCvFolderLayout(workspaceFolder, candidate).cvYamlFolder)) {
+        candidate = `${sourceCvName}_copy_${suffix}`;
+        suffix += 1;
+    }
+
+    return candidate;
+}
+
 function postCvCreationStatus(status: "idle" | "busy" | "success" | "error", message: string) {
     cvCreationPanel?.webview.postMessage({
         command: "status",
@@ -436,13 +740,7 @@ function postCvCreationStatus(status: "idle" | "busy" | "success" | "error", mes
 function getCvCreationHtml(
     webview: vscode.Webview,
     assetRoot: vscode.Uri,
-    state: {
-        themes: string[];
-        locales: string[];
-        targetFolder: string;
-        hasWorkspace: boolean;
-        globals: { design: boolean; locale: boolean; settings: boolean };
-    }
+    state: CvCreationWizardState
 ): string {
     const nonce = getNonce();
     const htmlPath = path.join(assetRoot.fsPath, "index.html");
@@ -471,12 +769,14 @@ export async function previewCvSidebar(str: string) {
     rcv.previewFileAsCV(str);
 }
 
-export function duplicateCV() {
-    runPlaceholderWorkflow(
-        `Duplicating CV ${contextCV}...`,
-        "CV duplication cancelled.",
-        `CV duplicated successfully! (WIP) ${contextCV}`
-    );
+export function cloneCV(uri?: vscode.Uri | string) {
+    const cvFile = getCvFileFromCommandArg(uri);
+    if (!cvFile) {
+        vscode.window.showWarningMessage("No CV selected.");
+        return;
+    }
+
+    startCvCreationWizard({ mode: "clone", sourceCvFile: cvFile });
 }
 
 export async function revealOutputPdf(uri?: vscode.Uri | string) {
