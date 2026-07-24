@@ -71,6 +71,10 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 sidebar.openCvsHelp();
             } else if (message.command === "setContextCV") {
                 sidebar.setContextCV(message.cv);
+            } else if (message.command === "cloneCV") {
+                sidebar.cloneCV(message.cv);
+            } else if (message.command === "revealOutputPdf") {
+                sidebar.revealOutputPdf(message.cv);
             } else if (message.command === "introDismissed") {
                 this.context.workspaceState.update("rendercv.hasSeenIntro", true);
             } else if (message.command === "introSetup") {

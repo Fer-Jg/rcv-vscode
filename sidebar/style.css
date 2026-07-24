@@ -116,14 +116,33 @@ body {
 }
 
 .cv-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
     height: 22px;
     line-height: 22px;
-    padding: 0 20px;
+    padding: 0 4px 0 20px;
     cursor: pointer;
     color: var(--vscode-foreground);
     white-space: nowrap;
+}
+
+.cv-item-label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.cv-item-menu {
+    flex: 0 0 auto;
+    opacity: 0;
+}
+
+.cv-item:hover .cv-item-menu,
+.cv-item:focus-within .cv-item-menu,
+.cv-item.selected .cv-item-menu {
+    opacity: 1;
 }
 
 .cv-item:hover {
@@ -139,6 +158,49 @@ body {
 .cv-item.selected:hover {
     background: var(--vscode-list-activeSelectionBackground);
     color: var(--vscode-list-activeSelectionForeground);
+}
+
+.cv-context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 170px;
+    padding: 4px 0;
+    border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+    border-radius: 4px;
+    background: var(--vscode-menu-background, var(--vscode-dropdown-background));
+    color: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.cv-context-menu[hidden] {
+    display: none;
+}
+
+.cv-context-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 24px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cv-context-menu button:hover,
+.cv-context-menu button:focus {
+    outline: 0;
+    background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
+    color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground));
+}
+
+.cv-context-menu .codicon {
+    font-size: 14px;
 }
 
 /* Feedback link */
