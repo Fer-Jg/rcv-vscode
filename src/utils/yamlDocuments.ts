@@ -26,9 +26,7 @@ export interface PreflightResult {
 
 export async function parseYamlFile(filePath: string): Promise<Document> {
     const source = await fs.promises.readFile(filePath, "utf8");
-    const document = parseDocument(source, { keepSourceTokens: true });
-    throwIfYamlHasErrors(document, filePath);
-    return document;
+    return parseYamlSource(source, filePath);
 }
 
 export async function removeRootKeys(filePath: string, keys: string[]): Promise<void> {
@@ -93,7 +91,9 @@ export async function splitRootKeysToFiles(
     filePath: string,
     destinations: SplitRootDestination[]
 ): Promise<SplitYamlResult> {
-    const document = await parseYamlFile(filePath);
+    const source = await fs.promises.readFile(filePath, "utf8");
+    const document = parseYamlSource(source, filePath);
+    const fileHeaderComments = extractLeadingComments(source);
     const root = document.contents;
 
     if (!isMap(root)) {
@@ -128,7 +128,7 @@ export async function splitRootKeysToFiles(
             .filter((outputPath): outputPath is string => Boolean(outputPath));
 
         for (const outputPath of filesToWrite) {
-            const splitDocument = createSplitDocument(document, schemaPair, pair);
+            const splitDocument = createSplitDocument(document, schemaPair, pair, fileHeaderComments);
             await fs.promises.writeFile(outputPath, splitDocument.toString(), { encoding: "utf8", flag: "wx" });
             createdFiles.push(outputPath);
         }
@@ -153,24 +153,120 @@ export function predictRenderCvSourceFileName(cvName: string): string {
     return `${sourceStem}.yaml`;
 }
 
+function parseYamlSource(source: string, filePath: string): Document {
+    const document = parseDocument(source, { keepSourceTokens: true });
+    throwIfYamlHasErrors(document, filePath);
+    return document;
+}
+
 function findRootPair(root: YAMLMap, key: string): Pair | undefined {
     return root.items.find(pair => getPairKey(pair) === key);
 }
 
-function createSplitDocument(sourceDocument: Document, schemaPair: Pair | undefined, rootPair: Pair): Document {
+function createSplitDocument(
+    sourceDocument: Document,
+    schemaPair: Pair | undefined,
+    rootPair: Pair,
+    fileHeaderComments?: string
+): Document {
     const splitDocument = new Document();
     if (sourceDocument.directives) {
         splitDocument.directives = sourceDocument.directives.clone();
     }
 
     const splitRoot = new YAMLMap(splitDocument.schema);
+    const headerComments = copyDocumentHeaderComments(sourceDocument, splitRoot, fileHeaderComments);
     if (schemaPair) {
-        splitRoot.items.push(schemaPair.clone(splitDocument.schema));
+        const clonedSchemaPair = schemaPair.clone(splitDocument.schema);
+        removeDuplicateHeaderComment(clonedSchemaPair, headerComments);
+        splitRoot.items.push(clonedSchemaPair);
     }
-    splitRoot.items.push(rootPair.clone(splitDocument.schema));
+    const clonedRootPair = rootPair.clone(splitDocument.schema);
+    removeDuplicateHeaderComment(clonedRootPair, headerComments);
+    splitRoot.items.push(clonedRootPair);
     splitDocument.contents = splitRoot;
 
     return splitDocument;
+}
+
+function copyDocumentHeaderComments(
+    sourceDocument: Document,
+    splitRoot: YAMLMap,
+    fileHeaderComments?: string
+): string | undefined {
+    const sourceRoot = sourceDocument.contents;
+    const comments = mergeUniqueCommentBlocks(
+        fileHeaderComments,
+        getCommentBefore(sourceDocument),
+        getCommentBefore(sourceRoot),
+        isMap(sourceRoot) ? getCommentBefore(sourceRoot.items[0]?.key) : undefined
+    );
+
+    if (comments) {
+        splitRoot.commentBefore = comments;
+    }
+
+    return comments;
+}
+
+function removeDuplicateHeaderComment(pair: Pair, headerComments: string | undefined): void {
+    if (!headerComments || !isScalar(pair.key) || !commentsEqual(pair.key.commentBefore, headerComments)) {
+        return;
+    }
+
+    pair.key.commentBefore = undefined;
+}
+
+function extractLeadingComments(source: string): string | undefined {
+    const comments: string[] = [];
+
+    for (const line of source.replace(/^\uFEFF/, "").split(/\r?\n/)) {
+        if (!line.trim()) {
+            if (comments.length === 0) {
+                continue;
+            }
+            break;
+        }
+
+        const commentMatch = line.match(/^\s*#(.*)$/);
+        if (!commentMatch) {
+            break;
+        }
+
+        comments.push(commentMatch[1]);
+    }
+
+    return comments.length > 0 ? comments.join("\n") : undefined;
+}
+
+function mergeUniqueCommentBlocks(...blocks: Array<string | null | undefined>): string | undefined {
+    const seen = new Set<string>();
+    const lines: string[] = [];
+
+    for (const block of blocks) {
+        for (const line of block?.split(/\r?\n/) ?? []) {
+            const normalized = line.trim();
+            if (!line || seen.has(normalized)) {
+                continue;
+            }
+            seen.add(normalized);
+            lines.push(line);
+        }
+    }
+
+    return lines.length > 0 ? lines.join("\n") : undefined;
+}
+
+function getCommentBefore(node: unknown): string | null | undefined {
+    return (node as { commentBefore?: string | null } | null | undefined)?.commentBefore;
+}
+
+function commentsEqual(left: string | null | undefined, right: string | null | undefined): boolean {
+    return normalizeCommentBlock(left) === normalizeCommentBlock(right);
+}
+
+function normalizeCommentBlock(value: string | null | undefined): string {
+    return value?.split(/\r?\n/).map(line => line.trim()).join("\n") ?? "";
 }
 
 function getPairKey(pair: Pair): string | undefined {
