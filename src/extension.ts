@@ -29,6 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('rendercv-vscode.sendFeedback', sidebarActions.sendFeedback),
 		vscode.commands.registerCommand('rendercv-vscode.previewSidebar', sidebarActions.previewCvSidebar),
 		vscode.commands.registerCommand('rendercv-vscode.duplicateCV', sidebarActions.duplicateCV),
+		vscode.commands.registerCommand('rendercv-vscode.revealOutputPdf', sidebarActions.revealOutputPdf),
 		vscode.commands.registerCommand("rendercv-vscode.newGlobal", sidebarActions.newCvFromGlobal),
 		vscode.commands.registerCommand("rendercv-vscode.globalSettings", sidebarActions.openGlobalSettings),
 		vscode.commands.registerCommand("rendercv-vscode.extensionLogs", sidebarActions.extensionLogs)

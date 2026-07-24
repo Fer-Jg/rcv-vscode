@@ -52,6 +52,10 @@
         "title": "Duplicate CV"
       },
       {
+        "command": "rendercv-vscode.revealOutputPdf",
+        "title": "Reveal Output PDF"
+      },
+      {
         "command": "rendercv-vscode.sendFeedback",
         "title": "Send Feedback"
       },
@@ -86,6 +90,10 @@
           "when": "false"
         },
         {
+          "command": "rendercv-vscode.revealOutputPdf",
+          "when": "false"
+        },
+        {
           "command": "rendercv-vscode.sendFeedback",
           "when": "false"
         },
@@ -107,11 +115,21 @@
           "command": "rendercv-vscode.previewFileAsCV",
           "when": "resourceExtname == .yaml || resourceExtname == .yml",
           "group": "navigation"
+        },
+        {
+          "command": "rendercv-vscode.revealOutputPdf",
+          "when": "resourceFilename == cv.yaml",
+          "group": "navigation"
         }
       ],
       "webview/context": [
         {
           "command": "rendercv-vscode.duplicateCV",
+          "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
+          "group": "inline"
+        },
+        {
+          "command": "rendercv-vscode.revealOutputPdf",
           "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
           "group": "inline"
         }

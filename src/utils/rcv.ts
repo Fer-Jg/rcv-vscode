@@ -192,13 +192,7 @@ export async function previewFileAsCV(filePath: string): Promise<void> {
 	try {
 		await openYamlPreview(filePath);
 
-		const renderOptions = await getRenderOptions(filePath);
-		fs.mkdirSync(renderOptions.outputFolder, { recursive: true });
-
-		const output = await executeRCVCommand(renderOptions.args);
-		logger.info(`RenderCV CLI output: ${output}`);
-
-		const pdfPath = await findGeneratedPdf(renderOptions.outputFolder);
+		const pdfPath = await renderFileAsCV(filePath);
 		logger.info(`Generated PDF path: ${pdfPath}`);
 		if (!pdfPath) {
 			vscode.window.showWarningMessage("RenderCV finished, but no generated PDF was found.");
@@ -210,6 +204,24 @@ export async function previewFileAsCV(filePath: string): Promise<void> {
 		logger.error(`RenderCV CLI output: ${error}`);
 		vscode.window.showErrorMessage(`Failed to preview CV: ${error}`);
 	}
+}
+
+export async function renderFileAsCV(filePath: string): Promise<string | undefined> {
+	const renderOptions = await getRenderOptions(filePath);
+	fs.mkdirSync(renderOptions.outputFolder, { recursive: true });
+
+	const output = await executeRCVCommand(renderOptions.args);
+	logger.info(`RenderCV CLI output: ${output}`);
+
+	return findGeneratedPdf(renderOptions.outputFolder);
+}
+
+export async function getStructuredCvOutputFolder(filePath: string): Promise<string | undefined> {
+	return getCvFolderLayoutForCvFile(filePath)?.outputFolder;
+}
+
+export async function findNewestPdf(outputDirectory: string): Promise<string | undefined> {
+	return findGeneratedPdf(outputDirectory);
 }
 
 async function openYamlPreview(filePath: string): Promise<void> {
@@ -281,16 +293,6 @@ async function getRenderOptions(filePath: string): Promise<{ args: string[]; out
 }
 
 async function findGeneratedPdf(outputDirectory: string): Promise<string | undefined> {
-	if (fs.existsSync(outputDirectory)) {
-		const pdf = fs
-			.readdirSync(outputDirectory)
-			.find(file => path.extname(file).toLowerCase() === ".pdf");
-
-		if (pdf) {
-			return path.join(outputDirectory, pdf);
-		}
-	}
-
 	try {
 		const entries = await fs.promises.readdir(outputDirectory, { withFileTypes: true });
 		const pdfStats = await Promise.all(

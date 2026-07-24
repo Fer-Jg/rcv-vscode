@@ -430,6 +430,54 @@ export function duplicateCV() {
     );
 }
 
+export async function revealOutputPdf(uri?: vscode.Uri | string) {
+    const cvFile = getCvFileFromCommandArg(uri);
+    if (!cvFile) {
+        vscode.window.showWarningMessage("No CV selected.");
+        return;
+    }
+
+    const outputFolder = await rcv.getStructuredCvOutputFolder(cvFile);
+    if (!outputFolder) {
+        vscode.window.showWarningMessage("Could not resolve a structured CV output folder for this file.");
+        return;
+    }
+
+    let pdfPath = await rcv.findNewestPdf(outputFolder);
+    if (!pdfPath) {
+        const selection = await vscode.window.showWarningMessage(
+            "No PDF output found.",
+            "Render and reveal",
+            "Cancel"
+        );
+
+        if (selection !== "Render and reveal") {
+            return;
+        }
+
+        pdfPath = await rcv.renderFileAsCV(cvFile);
+    }
+
+    if (!pdfPath) {
+        vscode.window.showWarningMessage("RenderCV finished, but no generated PDF was found.");
+        return;
+    }
+
+    await vscode.commands.executeCommand("revealFileInOS", vscode.Uri.file(pdfPath));
+}
+
+function getCvFileFromCommandArg(uri?: vscode.Uri | string): string | undefined {
+    if (typeof uri === "string") {
+        return uri;
+    }
+
+    if (uri instanceof vscode.Uri) {
+        return uri.fsPath;
+    }
+
+    return contextCV || undefined;
+}
+
 export async function sendFeedback() {
     runPlaceholderWorkflow(
         "Sending feedback...",
