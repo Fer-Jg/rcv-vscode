@@ -3,6 +3,10 @@ import * as fs from "fs";
 import * as path from "path";
 import * as rcv from "../utils/rcv";
 import { logger } from "../utils/logging";
+import {
+    preflightNewCvSplitFiles,
+    splitRootKeysToSiblingFiles,
+} from "../utils/yamlDocuments";
 
 let contextCV = "";
 let reloadCvsHandler: (() => void) | undefined;
@@ -52,6 +56,11 @@ interface CvCreationOptions {
     locale?: string;
     createTypstTemplates: boolean;
     createMarkdownTemplates: boolean;
+}
+
+interface CvCreationResult {
+    splitFileCount: number;
+    skippedSplitReason?: string;
 }
 
 function temporaryNotification(message: string, duration: number = 3000) {
@@ -203,14 +212,15 @@ async function startCvCreationWizard() {
         }
 
         try {
-            const createdFile = await createCvFromOptions(message.options, workspaceFolder);
-            postCvCreationStatus("success", "New CV created successfully.");
-            if (createdFile) {
-                const document = await vscode.workspace.openTextDocument(vscode.Uri.file(createdFile));
-                await vscode.window.showTextDocument(document, { preview: false });
+            const result = await createCvFromOptions(message.options, workspaceFolder);
+            if (result.skippedSplitReason) {
+                postCvCreationStatus("success", `New CV created. Split skipped: ${result.skippedSplitReason}`);
+                vscode.window.showWarningMessage(`New CV created, but splitting was skipped: ${result.skippedSplitReason}`);
+            } else {
+                postCvCreationStatus("success", `New CV created and split into ${result.splitFileCount} files.`);
+                vscode.window.showInformationMessage(`New CV created and split into ${result.splitFileCount} files.`);
             }
             reloadCvs();
-            vscode.window.showInformationMessage("New CV created successfully.");
         } catch (error) {
             logger.error(`Failed to create CV: ${error}`);
             postCvCreationStatus("error", `Failed to create CV: ${error}`);
@@ -219,7 +229,7 @@ async function startCvCreationWizard() {
     });
 }
 
-async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: vscode.WorkspaceFolder): Promise<string | undefined> {
+async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: vscode.WorkspaceFolder): Promise<CvCreationResult> {
     const cvName = options.cvName.trim();
     if (!cvName) {
         throw new Error("CV name is required.");
@@ -227,6 +237,12 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
 
     const targetFolder = getCvTargetFolder(workspaceFolder);
     const args = buildNewCvArgs({ ...options, cvName });
+
+    postCvCreationStatus("busy", "Checking output files...");
+    const preflight = await preflightNewCvSplitFiles(targetFolder, cvName);
+    if (preflight.conflicts.length > 0) {
+        throw new Error(`Cannot create CV because these files already exist: ${preflight.conflicts.join(", ")}`);
+    }
 
     postCvCreationStatus("busy", "Checking RenderCV CLI...");
     const cliIsReady = await rcv.detectRenderCVCliPath(false);
@@ -236,11 +252,21 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
 
     postCvCreationStatus("busy", "Creating CV file...");
     await fs.promises.mkdir(targetFolder, { recursive: true });
-    const beforeFiles = await getYamlFileStats(targetFolder);
     const output = await rcv.executeRCVCommand(args, targetFolder);
     logger.info(`RenderCV CLI output: ${output}`);
 
-    return findCreatedYamlFile(targetFolder, beforeFiles);
+    const createdFile = preflight.sourceFilePath;
+    if (!fs.existsSync(createdFile)) {
+        throw new Error(`RenderCV finished, but the expected YAML file was not created: ${createdFile}`);
+    }
+
+    postCvCreationStatus("busy", "Splitting YAML sections...");
+    const splitResult = await splitRootKeysToSiblingFiles(createdFile);
+
+    return {
+        splitFileCount: splitResult.createdFiles.length,
+        skippedSplitReason: splitResult.skippedReason,
+    };
 }
 
 function buildNewCvArgs(options: CvCreationOptions): string[] {
@@ -302,34 +328,6 @@ function getNonce(): string {
         nonce += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return nonce;
-}
-
-async function getYamlFileStats(folder: string): Promise<Map<string, number>> {
-    try {
-        const entries = await fs.promises.readdir(folder, { withFileTypes: true });
-        const stats = await Promise.all(
-            entries
-                .filter(entry => entry.isFile())
-                .filter(entry => [".yaml", ".yml"].includes(path.extname(entry.name).toLowerCase()))
-                .map(async entry => {
-                    const filePath = path.join(folder, entry.name);
-                    const stat = await fs.promises.stat(filePath);
-                    return [filePath, stat.mtimeMs] as const;
-                })
-        );
-
-        return new Map(stats);
-    } catch {
-        return new Map();
-    }
-}
-
-async function findCreatedYamlFile(folder: string, beforeFiles: Map<string, number>): Promise<string | undefined> {
-    const afterFiles = await getYamlFileStats(folder);
-    return [...afterFiles.entries()]
-        .filter(([filePath, mtimeMs]) => !beforeFiles.has(filePath) || beforeFiles.get(filePath) !== mtimeMs)
-        .sort((a, b) => b[1] - a[1])
-        .at(0)?.[0];
 }
 
 export async function previewCvSidebar(str: string) {
