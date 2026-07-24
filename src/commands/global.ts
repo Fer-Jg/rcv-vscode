@@ -1,8 +1,11 @@
 import * as vscode from 'vscode';
 import { previewFileAsCV } from '../utils/rcv';
+import { runPlaceholderWorkflow } from '../utils/devTools';
 
 export function installRequirements() {
-	vscode.window.showInformationMessage('Installing requirements... (WIP)');
+    runPlaceholderWorkflow('🚨 WIP Installing requirements WIP 🚨', 
+        '🚨 WIP Installation cancelled WIP 🚨', 
+        '🚨 WIP Installation is not implemented yet 🚨');
 };
 
 export async function previewCvFile(uri: vscode.Uri | string) {

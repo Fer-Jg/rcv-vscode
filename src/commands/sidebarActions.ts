@@ -21,6 +21,7 @@ import {
     getWorkspaceLayout,
     pathExists,
 } from "../utils/workspaceLayout";
+import { temporaryNotification, runPlaceholderWorkflow } from "../utils/devTools";
 
 let contextCV = "";
 let reloadCvsHandler: (() => void) | undefined;
@@ -133,48 +134,6 @@ interface CloneSourceState {
     };
 }
 
-function temporaryNotification(message: string, duration: number = 3000) {
-    vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: message,
-            cancellable: true,
-        },
-        async () => {
-            await new Promise(resolve => setTimeout(resolve, duration));
-        }
-    );
-}
-
-function runPlaceholderWorkflow(startMessage: string, cancelledMessage: string, completedMessage: string) {
-    vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: startMessage,
-            cancellable: true,
-        },
-        async (_progress, token) => {
-            logger.info(startMessage);
-            logger.info("Starting simulated workflow execution...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            logger.info("1 second delay completed.");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            logger.info("2 seconds delay completed.");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            logger.info("3 seconds delay completed.");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            logger.info("Workflow simulation completed.");
-
-            if (token.isCancellationRequested) {
-                temporaryNotification(cancelledMessage);
-                return;
-            }
-
-            temporaryNotification(completedMessage, 3000);
-        }
-    );
-}
-
 export function setExtensionUri(uri: vscode.Uri) {
     extensionUri = uri;
 }
@@ -206,17 +165,17 @@ export function reloadCvs() {
 
 export function searchCvs() {
     runPlaceholderWorkflow(
-        "Searching CVs...",
-        "CV search cancelled.",
-        "CV search completed! (WIP)"
+        "🚨 WIP Searching CVs WIP 🚨",
+        "🚨 WIP CV search cancelled WIP 🚨",
+        "🚨 WIP CV search could not be completed WIP 🚨"
     );
 }
 
 export function filterCvs() {
     runPlaceholderWorkflow(
-        "Filtering CVs...",
-        "CV filter cancelled.",
-        "CV filter applied! (WIP)"
+        "🚨 WIP Filtering CVs WIP 🚨",
+        "🚨 WIP CV filter cancelled WIP 🚨",
+        "🚨 WIP CV filter could not be completed WIP 🚨"
     );
 }
 
