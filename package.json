@@ -172,7 +172,7 @@
             "Only render when the user saves a file.",
             "Only render when the user clicks the preview button."
           ],
-          "default": "auto",
+          "default": "on-save",
           "description": "Define when you want to re-render the CV."
         },
         "rendercv-vscode.defaultOutputPath": {

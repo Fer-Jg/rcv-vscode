@@ -5,6 +5,8 @@ import { renderFileAsCV } from "./rcv";
 
 type AutoRenderType = "auto" | "on-save" | "on-click";
 type TimerHandle = ReturnType<typeof setTimeout>;
+const USE_RENDER_ON_SAVE_ACTION = "Use render on save";
+const IGNORE_AUTO_RENDER_ON_EDIT_ACTION = "Ignore";
 
 interface AutoRenderSettings {
 	mode: AutoRenderType;
@@ -183,8 +185,30 @@ class AutoRenderController implements vscode.Disposable {
 			return;
 		}
 
+		if (this.settings.mode === "auto") {
+			void warnAutoRenderOnEditTemporarilyDisabled(document.uri.fsPath);
+			return;
+		}
+
 		this.scheduler.schedule(document.uri.fsPath, this.settings.cooldownMs);
 	}
+}
+
+export async function warnAutoRenderOnEditTemporarilyDisabled(filePath: string): Promise<void> {
+	logger.warn(`The "auto-render on edit" feature is a work in progress. Skipped auto-render for ${filePath}.`);
+	const selection = await vscode.window.showWarningMessage(
+		"The \"auto-render on edit\" feature is a work in progress, so this CV was not rendered. You can switch to render on save instead.",
+		USE_RENDER_ON_SAVE_ACTION,
+		IGNORE_AUTO_RENDER_ON_EDIT_ACTION
+	);
+
+	if (selection !== USE_RENDER_ON_SAVE_ACTION) {
+		return;
+	}
+
+	await vscode.workspace
+		.getConfiguration("rendercv-vscode")
+		.update("autoRenderType", "on-save", vscode.ConfigurationTarget.Workspace);
 }
 
 function getAutoRenderSettings(): AutoRenderSettings {
