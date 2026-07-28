@@ -37,17 +37,6 @@
         "description": "Create and manage RenderCV resumes from VS Code.",
         "steps": [
           {
-            "id": "installCli",
-            "title": "Install the RenderCV CLI",
-            "description": "Install the RenderCV command-line dependency used to generate your CV outputs.\n\n[What is this?](command:rendercv-vscode.walkthrough.openTutorial)\n[Install now](command:rendercv-vscode.walkthrough.installRequirements)",
-            "media": {
-              "markdown": "walkthroughs/install-cli.md"
-            },
-            "completionEvents": [
-              "onCommand:rendercv-vscode.walkthrough.installRequirements"
-            ]
-          },
-          {
             "id": "openSidebar",
             "title": "Open RCV - VSCode",
             "description": "Open the RenderCV sidebar to see your CVs and manage them from VS Code.\n\n[Open RCV - VSCode](command:workbench.view.extension.rendercv-vscode-sidebar)",
@@ -56,6 +45,17 @@
             },
             "completionEvents": [
               "onView:rendercv-vscode.mySidebar"
+            ]
+          },
+          {
+            "id": "installCli",
+            "title": "Install the RenderCV CLI",
+            "description": "Install the RenderCV command-line dependency used to generate your CV outputs.\n\n[What is this?](command:rendercv-vscode.walkthrough.openTutorial)\n[Install now](command:rendercv-vscode.walkthrough.installRequirements)",
+            "media": {
+              "markdown": "walkthroughs/install-cli.md"
+            },
+            "completionEvents": [
+              "onCommand:rendercv-vscode.walkthrough.installRequirements"
             ]
           },
           {
