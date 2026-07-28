@@ -75,6 +75,8 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
                 sidebar.cloneCV(message.cv);
             } else if (message.command === "revealOutputPdf") {
                 sidebar.revealOutputPdf(message.cv);
+            } else if (message.command === "openWalkthrough") {
+                this.openWalkthrough();
             } else if (message.command === "introDismissed") {
                 this.context.workspaceState.update("rendercv.hasSeenIntro", true);
             } else if (message.command === "introSetup") {
@@ -90,6 +92,12 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         });
 
         webview.html = html;
+    }
+
+    private async openWalkthrough(): Promise<void> {
+        const walkthroughId = `${this.context.extension.id}#rendercv-vscode.getStarted`;
+        logger.info(`Opening walkthrough: ${walkthroughId}`);
+        await vscode.commands.executeCommand("workbench.action.openWalkthrough", walkthroughId, false);
     }
 
     private reloadCvs() {

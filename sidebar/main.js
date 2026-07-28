@@ -193,6 +193,10 @@ document.getElementById("intro-setup-button").addEventListener("click", () => {
     vscode.postMessage({ command: "introSetup" });
 });
 
+document.getElementById("intro-walkthrough-button").addEventListener("click", () => {
+    vscode.postMessage({ command: "openWalkthrough" });
+});
+
 document.getElementById("intro-dismiss-button").addEventListener("click", () => {
     vscode.postMessage({ command: "introDismissed" });
     document.getElementById("intro-view").style.display = "none";

@@ -22,6 +22,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('rendercv-vscode.previewFileAsCV', commands.previewCvFile),
 		vscode.commands.registerCommand('rendercv-vscode.installRequirements', commands.installRequirements),
+		vscode.commands.registerCommand('rendercv-vscode.walkthrough.openTutorial', commands.openWalkthroughTutorial),
+		vscode.commands.registerCommand('rendercv-vscode.walkthrough.installRequirements', commands.installRequirementsFromWalkthrough),
 		vscode.window.registerWebviewViewProvider(
 			SuperCoolSidebarProvider.viewType,
 			new SuperCoolSidebarProvider(context)

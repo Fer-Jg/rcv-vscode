@@ -30,10 +30,71 @@
         }
       ]
     },
+    "walkthroughs": [
+      {
+        "id": "rendercv-vscode.getStarted",
+        "title": "Get Started with RenderCV",
+        "description": "Create and manage RenderCV resumes from VS Code.",
+        "steps": [
+          {
+            "id": "installCli",
+            "title": "Install the RenderCV CLI",
+            "description": "Install the RenderCV command-line dependency used to generate your CV outputs.\n\n[What is this?](command:rendercv-vscode.walkthrough.openTutorial)\n[Install now](command:rendercv-vscode.walkthrough.installRequirements)",
+            "media": {
+              "markdown": "walkthroughs/install-cli.md"
+            },
+            "completionEvents": [
+              "onCommand:rendercv-vscode.walkthrough.installRequirements"
+            ]
+          },
+          {
+            "id": "openSidebar",
+            "title": "Open RCV - VSCode",
+            "description": "Open the RenderCV sidebar to see your CVs and manage them from VS Code.\n\n[Open RCV - VSCode](command:workbench.view.extension.rendercv-vscode-sidebar)",
+            "media": {
+              "markdown": "walkthroughs/open-sidebar.md"
+            },
+            "completionEvents": [
+              "onView:rendercv-vscode.mySidebar"
+            ]
+          },
+          {
+            "id": "createFirstCv",
+            "title": "Create your first CV",
+            "description": "Start the CV creation wizard from the walkthrough or from the RCV - VSCode sidebar.\n\n[Create a new CV](command:rendercv-vscode.newCV)",
+            "media": {
+              "markdown": "walkthroughs/create-first-cv.md"
+            },
+            "completionEvents": [
+              "onContext:rendercv-vscode.walkthrough.createCvStarted"
+            ]
+          },
+          {
+            "id": "enjoyUi",
+            "title": "Enjoy your RCV UI :)",
+            "description": "You are ready to use RenderCV from VS Code.\n\n[Open RCV - VSCode](command:workbench.view.extension.rendercv-vscode-sidebar)",
+            "media": {
+              "markdown": "walkthroughs/enjoy-ui.md"
+            },
+            "completionEvents": [
+              "onView:rendercv-vscode.mySidebar"
+            ]
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "rendercv-vscode.installRequirements",
         "title": "Install RenderCV-VSCode Requirements"
+      },
+      {
+        "command": "rendercv-vscode.walkthrough.openTutorial",
+        "title": "Open RenderCV Tutorial"
+      },
+      {
+        "command": "rendercv-vscode.walkthrough.installRequirements",
+        "title": "Install RenderCV CLI from Walkthrough"
       },
       {
         "command": "rendercv-vscode.newCV",
@@ -83,6 +144,14 @@
         },
         {
           "command": "rendercv-vscode.previewSidebar",
+          "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.walkthrough.openTutorial",
+          "when": "false"
+        },
+        {
+          "command": "rendercv-vscode.walkthrough.installRequirements",
           "when": "false"
         },
         {
@@ -228,7 +297,10 @@
   "files": [
     "out/**",
     "cv-creation/**",
+    "node_modules/**",
     "sidebar/**",
+    "walkthroughs/**",
+    "resources/**",
     "package.json"
   ],
   "dependencies": {

@@ -197,6 +197,10 @@ async function startCvCreationWizard(request: { mode: "create" } | { mode: "clon
         return;
     }
 
+    if (request.mode === "create") {
+        await vscode.commands.executeCommand("setContext", "rendercv-vscode.walkthrough.createCvStarted", true);
+    }
+
     if (cvCreationPanel) {
         cvCreationPanel.reveal(vscode.ViewColumn.One);
         return;
