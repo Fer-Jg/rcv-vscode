@@ -5,8 +5,8 @@ import { runPlaceholderWorkflow } from '../utils/devTools';
 const TUTORIAL_URL = "https://rcv-vscode.ferj.dev/tutorial";
 
 export function installRequirements() {
-    runPlaceholderWorkflow('🚨 WIP Installing requirements WIP 🚨', 
-        '🚨 WIP Installation cancelled WIP 🚨', 
+    runPlaceholderWorkflow('🚨 WIP Installing requirements WIP 🚨',
+        '🚨 WIP Installation cancelled WIP 🚨',
         '🚨 WIP Installation is not implemented yet 🚨');
 };
 
@@ -22,7 +22,10 @@ export async function installRequirementsFromWalkthrough() {
     );
 
     if (selection === "Tutorial") {
-        await openWalkthroughTutorial();
+        await openWalkthroughTutorial().then(() => {
+            installRequirementsFromWalkthrough();
+        }
+        );
         return;
     }
 
