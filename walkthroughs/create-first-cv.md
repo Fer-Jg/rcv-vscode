@@ -1,3 +1,5 @@
-# Placeholder: Create your first CV
+# Create your first CV
 
-This step will explain how to launch the CV creation wizard and choose starter settings.
+Click the "+ Create new CV" button in the RCV-VSCode view to open the CV creation wizard.
+
+Fill in the initial information required by the RenderCV CLI, and the extension will handle running the necessary command to create your CV.

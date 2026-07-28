@@ -1,3 +1,5 @@
-# Placeholder: Open RCV - VSCode
+# Open RCV - VSCode
 
-This step will explain where the custom sidebar lives and what users can do there.
+Look for the document icon in your sidebar — that's the RCV-VSCode extension. Click it to get started!
+
+(Alternatively, you can use the "Open RCV - VSCode" button.)
