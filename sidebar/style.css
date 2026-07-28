@@ -34,6 +34,83 @@ body {
     flex-direction: column;
 }
 
+.intro-view {
+    display: grid;
+    gap: 10px;
+    padding: 10px 20px 14px;
+}
+
+.intro-view h2 {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--vscode-sideBarTitle-foreground, var(--vscode-foreground));
+}
+
+.intro-view p {
+    margin: 0;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.45;
+}
+
+.intro-view a {
+    color: var(--vscode-textLink-foreground);
+    text-decoration: none;
+}
+
+.intro-view a:hover {
+    color: var(--vscode-textLink-activeForeground);
+    text-decoration: underline;
+}
+
+.intro-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.intro-actions.stacked {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.vscode-button {
+    width: 100%;
+    min-height: 26px;
+    padding: 4px 11px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    font: inherit;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+.vscode-button.primary {
+    color: var(--vscode-button-foreground);
+    background: var(--vscode-button-background);
+}
+
+.vscode-button.primary:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.vscode-button.secondary {
+    color: var(--vscode-button-secondaryForeground);
+    background: var(--vscode-button-secondaryBackground);
+}
+
+.vscode-button.secondary:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.vscode-button:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+}
+
 /* Static (non-collapsible) section header, styled like a native SCM/Explorer section */
 .section-header {
     display: flex;
