@@ -41,7 +41,7 @@
     "views": {
       "rendercv-vscode-sidebar": [
         {
-          "id": "rendercv-vscode.mySidebar",
+          "id": "rendercv-vscode.mainSidebar",
           "name": "RCV - VSCode",
           "type": "webview",
           "icon": "resources/rendercv-sidebar.svg"
@@ -62,7 +62,7 @@
               "markdown": "walkthroughs/open-sidebar.md"
             },
             "completionEvents": [
-              "onView:rendercv-vscode.mySidebar"
+              "onView:rendercv-vscode.mainSidebar"
             ]
           },
           {
@@ -95,7 +95,7 @@
               "markdown": "walkthroughs/enjoy-ui.md"
             },
             "completionEvents": [
-              "onView:rendercv-vscode.mySidebar"
+              "onView:rendercv-vscode.mainSidebar"
             ]
           }
         ]
@@ -212,29 +212,29 @@
       "webview/context": [
         {
           "command": "rendercv-vscode.cloneCV",
-          "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
+          "when": "webviewId == 'rendercv-vscode.mainSidebar' && webviewSection == 'cvItem'",
           "group": "inline"
         },
         {
           "command": "rendercv-vscode.revealOutputPdf",
-          "when": "webviewId == 'rendercv-vscode.mySidebar' && webviewSection == 'cvItem'",
+          "when": "webviewId == 'rendercv-vscode.mainSidebar' && webviewSection == 'cvItem'",
           "group": "inline"
         }
       ],
       "view/title": [
         {
           "command": "rendercv-vscode.newGlobal",
-          "when": "view == rendercv-vscode.mySidebar",
+          "when": "view == rendercv-vscode.mainSidebar",
           "group": "navigation@1"
         },
         {
           "command": "rendercv-vscode.globalSettings",
-          "when": "view == rendercv-vscode.mySidebar",
+          "when": "view == rendercv-vscode.mainSidebar",
           "group": "navigation@2"
         },
         {
           "command": "rendercv-vscode.extensionLogs",
-          "when": "view == rendercv-vscode.mySidebar",
+          "when": "view == rendercv-vscode.mainSidebar",
           "group": "navigation@3"
         }
       ]

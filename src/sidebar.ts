@@ -8,7 +8,7 @@ import rcv from "./utils/rcv";
 import { getWorkspaceLayout } from "./utils/workspaceLayout";
 
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = "rendercv-vscode.mySidebar";
+    public static readonly viewType = "rendercv-vscode.mainSidebar";
     extensionUri: vscode.Uri;
     private webviewView?: vscode.WebviewView;
 
