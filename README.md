@@ -1,71 +1,71 @@
-# rendercv-vscode README
+# RenderCV - VSCode
 
-This is the README for your extension "rendercv-vscode". After writing up a brief description, we recommend including the following sections.
+A tool to let you edit your CV through a UI instead of a CLI.
+
+Documentation and extra information can be found in https://rcv-vscode.ferj.dev
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Create CV through a UI (with full CLI options)
+- CV creation wizard
+- Automatically open side-to-side view for editor + preview
+- Automatic re-rendering on change/save detection
+- Global + Local settings for each CV
+- Self file management, worry only about your YAML edition and PDF copy result
+- Easy CV cloning with simple alternating themes and configurations
+- VSCode cohesion for a familiar workflow
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+### Really needed
+
+- **Python 3.12** or above
+- **A PDF viewer**
+  - Recommended: [vscode-pdf by tomoki1207](https://marketplace.visualstudio.com/items?itemName=tomoki1207.pdf)
+
+### Optional
+
+- **A YAML formatter/viewer for better experience**
+  - Recommended: [YAML by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)
+
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- `rendercv-vscode.autoRenderCooldown`: Time (in milliseconds) to wait after a file change before automatically re-rendering the CV. Default: `400`.
+
+- `rendercv-vscode.autoRenderType`: Controls when the CV is rendered.
+  - `auto` *(default)*: Automatically detect file changes and re-render after the configured cooldown.
+  - `on-save`: Re-render only when a file is saved.
+  - `on-click`: Re-render only when the preview button is clicked.
+
+- `rendercv-vscode.defaultOutputPath`: Default folder where generated CVs are saved. Leave empty to use the RenderCV default.
+
+- `rendercv-vscode.defaultTheme`: Default theme to use when creating new CVs. Available options:
+  - `classic` *(default)*
+  - `moderncv`
+  - `sb2nov`
+
+- `rendercv-vscode.renderCVCliPath`: Path to the RenderCV CLI executable. If RenderCV is installed globally, this can be left empty. The setup wizard will attempt to detect installations from global, virtual environment, or `uv` setups automatically.
+
+- `rendercv-vscode.CVYamlFilesFolder`: Folder containing your RenderCV YAML files. Default: `yamls`.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Auto Render Type "auto" makes it difficult to update YAML files in real time.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.5.0
 
-### 1.0.0
+Initial release, big hopes.
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- Create CV through a UI (with full CLI options)
+- CV creation wizard
+- Automatically open side-to-side view for editor + preview
+- Automatic re-rendering on change/save detection
+- Global + Local settings for each CV
+- Self file management, worry only about your YAML edition and PDF copy result
+- Easy CV cloning with simple alternating themes and configurations
+- VSCode cohesion for a familiar workflow

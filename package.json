@@ -1,13 +1,31 @@
 {
+  "version": "0.5.0",
   "name": "rendercv-vscode",
   "displayName": "RenderCV - VScode",
   "description": "RenderCV but in VSCode, for free.",
-  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fer-Jg/rcv-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/Fer-Jg/rcv-vscode/issues"
+  },
+  "license": "None :)",
+  "homepage": "https://rcv-vscode.ferj.dev",
+  "galleryBanner": {
+    "color": "#00ffaa",
+    "theme": "dark"
+  },
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.125.0"
   },
   "categories": [
+    "Visualization",
     "Other"
+  ],
+  "keywords": [
+    "rendercv", "cv"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -299,9 +317,13 @@
     "cv-creation/**",
     "node_modules/**",
     "sidebar/**",
+    "media/**",
     "walkthroughs/**",
     "resources/**",
-    "package.json"
+    "package.json",
+    "LICENSE.md",
+    "SUPPORT.md",
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "@vscode/codicons": "^0.0.45",
