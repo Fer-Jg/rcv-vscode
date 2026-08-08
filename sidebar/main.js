@@ -17,6 +17,22 @@ function getFileName(filePath) {
     return fileName;
 }
 
+function normalizeCvItem(item) {
+    if (typeof item === "string") {
+        return {
+            filePath: item,
+            label: getFileName(item),
+            displayPath: item,
+        };
+    }
+
+    return {
+        filePath: item.filePath,
+        label: item.label || getFileName(item.filePath),
+        displayPath: item.displayPath || item.filePath,
+    };
+}
+
 function render() {
     listEl.innerHTML = "";
     closeCvActionMenu();
@@ -28,10 +44,12 @@ function render() {
         return;
     }
 
-    cvs.forEach((name) => {
+    cvs.forEach((item) => {
+        const cv = normalizeCvItem(item);
+        const name = cv.filePath;
         const li = document.createElement("li");
         li.className = "cv-item" + (name === selectedCv ? " selected" : "");
-        li.title = name;
+        li.title = cv.displayPath;
         li.dataset.cv = name;
         li.dataset.vscodeContext = JSON.stringify({
             webviewSection: "cvItem"
@@ -39,13 +57,13 @@ function render() {
 
         const label = document.createElement("span");
         label.className = "cv-item-label";
-        label.textContent = getFileName(name);
+        label.textContent = cv.label;
 
         const menuButton = document.createElement("button");
         menuButton.className = "cv-item-menu icon-button";
         menuButton.type = "button";
         menuButton.title = "CV actions";
-        menuButton.setAttribute("aria-label", `Actions for ${getFileName(name)}`);
+        menuButton.setAttribute("aria-label", `Actions for ${cv.label}`);
         menuButton.innerHTML = '<i class="codicon codicon-kebab-vertical"></i>';
 
         li.addEventListener("click", () => {
@@ -182,7 +200,8 @@ window.addEventListener("message", (event) => {
     }
     if (event.data.command === "cvList") {
         cvs = event.data.cvs || [];
-        selectedCv = cvs.includes(selectedCv) ? selectedCv : cvs[0] || "";
+        const cvPaths = cvs.map(item => normalizeCvItem(item).filePath);
+        selectedCv = cvPaths.includes(selectedCv) ? selectedCv : cvPaths[0] || "";
         render();
     }
 });

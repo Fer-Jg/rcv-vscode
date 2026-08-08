@@ -5,7 +5,7 @@ import * as commands from "./commands/global";
 import { logger } from "./utils/logging";
 import * as sidebar from "./commands/sidebarActions";
 import rcv from "./utils/rcv";
-import { getWorkspaceLayout } from "./utils/workspaceLayout";
+import { formatWorkspaceRelativePath, getWorkspaceLayout } from "./utils/workspaceLayout";
 
 class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "rendercv-vscode.mainSidebar";
@@ -116,7 +116,12 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
     }
 
     private postCvList() {
-        const yamlList = this.getYamlFiles();
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        const yamlList = this.getYamlFiles().map(filePath => ({
+            filePath,
+            label: path.basename(path.dirname(filePath)),
+            displayPath: formatWorkspaceRelativePath(filePath, workspaceFolder),
+        }));
         this.webviewView?.webview.postMessage({
             command: "cvList", cvs: yamlList
         });

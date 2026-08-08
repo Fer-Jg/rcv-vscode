@@ -37,8 +37,8 @@ const createButton = document.getElementById("create-button");
 let outputFolderExists = false;
 let outputFolderCheckTimer;
 
-targetFolder.textContent = state.targetFolder || "No workspace open";
-targetFolder.title = state.targetFolder || "No workspace open";
+targetFolder.textContent = state.targetFolderDisplay || state.targetFolder || "No workspace open";
+targetFolder.title = state.targetFolderDisplay || state.targetFolder || "No workspace open";
 workspaceWarning.hidden = state.hasWorkspace;
 createButton.disabled = !state.hasWorkspace;
 wizardTitle.textContent = isClone ? "Clone CV" : "Create CV";
@@ -186,11 +186,11 @@ function scheduleOutputFolderCheck(sanitizedCvName) {
   }, 150);
 }
 
-function setOutputFolderWarning(exists, folderPath) {
+function setOutputFolderWarning(exists, folderPath, displayPath) {
   outputFolderExists = exists;
   outputFolderWarning.hidden = !exists;
-  outputFolderPath.textContent = folderPath;
-  outputFolderPath.title = folderPath;
+  outputFolderPath.textContent = displayPath || folderPath;
+  outputFolderPath.title = displayPath || folderPath;
   if (!exists) {
     deleteOutputFolder.checked = false;
   }
@@ -239,7 +239,7 @@ window.addEventListener("message", event => {
     if (event.data.cvName !== buildOptions().cvName) {
       return;
     }
-    setOutputFolderWarning(event.data.exists, event.data.outputFolder);
+    setOutputFolderWarning(event.data.exists, event.data.outputFolder, event.data.outputFolderDisplay);
   }
 });
 

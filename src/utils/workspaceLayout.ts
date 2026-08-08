@@ -98,6 +98,26 @@ export function sanitizeCvFolderName(value: string): string {
     return sanitized;
 }
 
+export function formatWorkspaceRelativePath(filePath: string, workspaceFolder?: vscode.WorkspaceFolder): string {
+    if (!workspaceFolder) {
+        return filePath;
+    }
+
+    const workspaceRoot = path.resolve(workspaceFolder.uri.fsPath);
+    const resolvedPath = path.resolve(filePath);
+    const relativePath = path.relative(workspaceRoot, resolvedPath);
+
+    if (!relativePath) {
+        return ".";
+    }
+
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+        return filePath;
+    }
+
+    return relativePath.split(path.sep).join("/");
+}
+
 export async function pathExists(filePath: string): Promise<boolean> {
     try {
         await fs.promises.access(filePath, fs.constants.F_OK);

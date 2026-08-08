@@ -17,6 +17,7 @@ import {
 	type SplitRootDestination,
 } from '../utils/yamlDocuments';
 import {
+	formatWorkspaceRelativePath,
 	getCvFolderLayout,
 	getGlobalConfigFiles,
 	getWorkspaceLayout,
@@ -50,6 +51,22 @@ suite('Extension Test Suite', () => {
 			assertPathEqual(cvLayout.cvFile, path.join(dir, 'yamls', 'Given_Name', 'cv.yaml'));
 			assertPathEqual(cvLayout.outputFolder, path.join(dir, 'outputs', 'Given_Name'));
 			assertPathEqual(globals.design, path.join(dir, 'globals', 'design.yaml'));
+		} finally {
+			await fs.promises.rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	test('Formats workspace paths as relative display paths', async () => {
+		const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'rendercv-display-path-'));
+		try {
+			const workspaceFolder = makeWorkspaceFolder(dir);
+
+			assert.strictEqual(formatWorkspaceRelativePath(path.join(dir, 'yamls', 'Given_Name', 'cv.yaml'), workspaceFolder), 'yamls/Given_Name/cv.yaml');
+			assert.strictEqual(formatWorkspaceRelativePath(dir, workspaceFolder), '.');
+
+			const outsidePath = path.join(path.dirname(dir), `${path.basename(dir)}-outside`, 'cv.yaml');
+			assert.strictEqual(formatWorkspaceRelativePath(outsidePath, workspaceFolder), outsidePath);
+			assert.strictEqual(formatWorkspaceRelativePath(outsidePath), outsidePath);
 		} finally {
 			await fs.promises.rm(dir, { recursive: true, force: true });
 		}

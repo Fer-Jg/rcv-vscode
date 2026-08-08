@@ -19,6 +19,7 @@ import {
     getCvFolderLayoutForCvFile,
     getGlobalConfigFiles,
     getWorkspaceLayout,
+    formatWorkspaceRelativePath,
     pathExists,
 } from "../utils/workspaceLayout";
 import { temporaryNotification, runPlaceholderWorkflow } from "../utils/devTools";
@@ -94,6 +95,7 @@ interface CvCreationWizardState {
     themes: string[];
     locales: string[];
     targetFolder: string;
+    targetFolderDisplay: string;
     hasWorkspace: boolean;
     globals: { design: boolean; locale: boolean; settings: boolean };
     initial: {
@@ -210,6 +212,9 @@ async function startCvCreationWizard(request: { mode: "create" } | { mode: "clon
     const layout = workspaceFolder ? getWorkspaceLayout(workspaceFolder) : undefined;
     const globals = layout ? getGlobalConfigFiles(layout) : undefined;
     const targetFolder = layout ? layout.yamlRoot : "";
+    const targetFolderDisplay = layout && workspaceFolder
+        ? formatWorkspaceRelativePath(layout.yamlRoot, workspaceFolder)
+        : targetFolder;
     const assetRoot = vscode.Uri.joinPath(extensionUri, "cv-creation");
     const globalState = globals
         ? {
@@ -240,6 +245,7 @@ async function startCvCreationWizard(request: { mode: "create" } | { mode: "clon
         themes,
         locales,
         targetFolder,
+        targetFolderDisplay,
         hasWorkspace: Boolean(workspaceFolder),
         globals: globalState,
         initial: cloneState
@@ -365,18 +371,18 @@ async function createCvFromOptions(options: CvCreationOptions, workspaceFolder: 
 
     postCvCreationStatus("busy", "Checking output files...");
     if (await pathExists(cvLayout.cvYamlFolder)) {
-        throw new Error(`Cannot create CV because this folder already exists: ${cvLayout.cvYamlFolder}. Choose a different CV name.`);
+        throw new Error(`Cannot create CV because this folder already exists: ${displayPath(cvLayout.cvYamlFolder, workspaceFolder)}. Choose a different CV name.`);
     }
     if (await pathExists(cvLayout.outputFolder)) {
         if (!normalizedOptions.deleteExistingOutputFolder) {
-            throw new Error(`Cannot create CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name or acknowledge deleting it.`);
+            throw new Error(`Cannot create CV because this output folder already exists: ${displayPath(cvLayout.outputFolder, workspaceFolder)}. Choose a different CV name or acknowledge deleting it.`);
         }
 
         await deleteExistingCvOutputFolder(cvLayout.outputFolder, cvLayout.outputsRoot);
     }
     const preflight = await preflightYamlSplitFiles(sourceFilePath, splitDestinations);
     if (preflight.conflicts.length > 0) {
-        throw new Error(`Cannot create CV because these files already exist: ${preflight.conflicts.join(", ")}`);
+        throw new Error(`Cannot create CV because these files already exist: ${displayPaths(preflight.conflicts, workspaceFolder)}`);
     }
 
     postCvCreationStatus("busy", "Checking RenderCV CLI...");
@@ -438,11 +444,11 @@ async function cloneCvFromOptions(options: CvCreationOptions, sourceCvFile: stri
 
     postCvCreationStatus("busy", "Checking output files...");
     if (await pathExists(cvLayout.cvYamlFolder)) {
-        throw new Error(`Cannot clone CV because this folder already exists: ${cvLayout.cvYamlFolder}. Choose a different CV name.`);
+        throw new Error(`Cannot clone CV because this folder already exists: ${displayPath(cvLayout.cvYamlFolder, workspaceFolder)}. Choose a different CV name.`);
     }
     if (await pathExists(cvLayout.outputFolder)) {
         if (!normalizedOptions.deleteExistingOutputFolder) {
-            throw new Error(`Cannot clone CV because this output folder already exists: ${cvLayout.outputFolder}. Choose a different CV name or acknowledge deleting it.`);
+            throw new Error(`Cannot clone CV because this output folder already exists: ${displayPath(cvLayout.outputFolder, workspaceFolder)}. Choose a different CV name or acknowledge deleting it.`);
         }
 
         await deleteExistingCvOutputFolder(cvLayout.outputFolder, cvLayout.outputsRoot);
@@ -457,7 +463,7 @@ async function cloneCvFromOptions(options: CvCreationOptions, sourceCvFile: stri
     const existingOutputs = await Promise.all(outputPaths.map(async filePath => await pathExists(filePath) ? filePath : undefined));
     const conflicts = existingOutputs.filter((filePath): filePath is string => Boolean(filePath));
     if (conflicts.length > 0) {
-        throw new Error(`Cannot clone CV because these files already exist: ${conflicts.join(", ")}`);
+        throw new Error(`Cannot clone CV because these files already exist: ${displayPaths(conflicts, workspaceFolder)}`);
     }
 
     postCvCreationStatus("busy", "Cloning CV files...");
@@ -479,6 +485,7 @@ async function postOutputFolderStatus(cvName: string | undefined, workspaceFolde
             cvName,
             exists: false,
             outputFolder: "",
+            outputFolderDisplay: "",
         });
         return;
     }
@@ -490,6 +497,7 @@ async function postOutputFolderStatus(cvName: string | undefined, workspaceFolde
             cvName: cvLayout.cvName,
             exists: await pathExists(cvLayout.outputFolder),
             outputFolder: cvLayout.outputFolder,
+            outputFolderDisplay: formatWorkspaceRelativePath(cvLayout.outputFolder, workspaceFolder),
         });
     } catch {
         cvCreationPanel?.webview.postMessage({
@@ -497,6 +505,7 @@ async function postOutputFolderStatus(cvName: string | undefined, workspaceFolde
             cvName,
             exists: false,
             outputFolder: "",
+            outputFolderDisplay: "",
         });
     }
 }
@@ -649,7 +658,7 @@ async function getCloneSourceState(sourceCvFile: string, workspaceFolder: vscode
     }
 
     if (!await pathExists(sourceLayout.cvFile)) {
-        throw new Error(`Cannot clone missing CV file: ${sourceLayout.cvFile}`);
+        throw new Error(`Cannot clone missing CV file: ${displayPath(sourceLayout.cvFile, workspaceFolder)}`);
     }
 
     const sourceDocument = await parseYamlFile(sourceLayout.cvFile);
@@ -700,6 +709,14 @@ function postCvCreationStatus(status: "idle" | "busy" | "success" | "error", mes
     });
 }
 
+function displayPath(filePath: string, workspaceFolder: vscode.WorkspaceFolder): string {
+    return formatWorkspaceRelativePath(filePath, workspaceFolder);
+}
+
+function displayPaths(filePaths: string[], workspaceFolder: vscode.WorkspaceFolder): string {
+    return filePaths.map(filePath => displayPath(filePath, workspaceFolder)).join(", ");
+}
+
 function getCvCreationHtml(
     webview: vscode.Webview,
     assetRoot: vscode.Uri,
@@ -728,7 +745,8 @@ function getNonce(): string {
 }
 
 export async function previewCvSidebar(str: string) {
-    temporaryNotification(`Previewing ${str}...`, 3000);
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(str));
+    temporaryNotification(`Previewing ${formatWorkspaceRelativePath(str, workspaceFolder)}...`, 3000);
     rcv.previewFileAsCV(str);
 }
 
