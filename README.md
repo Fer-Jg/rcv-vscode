@@ -4,6 +4,9 @@ A tool to let you edit your CV through a UI instead of a CLI.
 
 Documentation and extra information can be found in https://rcv-vscode.ferj.dev
 
+![Usage GIF](https://raw.githubusercontent.com/Fer-Jg/rcv-vscode/refs/heads/main/media/showcase.png)
+
+
 ## Features
 
 - Create CV through a UI (with full CLI options)
