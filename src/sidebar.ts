@@ -22,7 +22,6 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         this.webviewView = webviewView;
         sidebar.setReloadCvsHandler(() => this.reloadCvs());
 
-        const hasSeenIntro = this.context.workspaceState.get<boolean>("rendercv.hasSeenIntro", false);
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [
@@ -51,10 +50,10 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
             .replace("{{scriptUri}}", scriptUri.toString())
             .replace("{{codiconUri}}", codiconUri.toString());
 
-        webview.onDidReceiveMessage((message) => {
+        webview.onDidReceiveMessage(async (message) => {
             logger.info("Received message from webview:", message);
             if (message.command === "ready") {
-                this.postSidebarState(!hasSeenIntro);
+                this.postSidebarState();
             } else if (message.command === "createNewCV") {
                 sidebar.newCv();
             } else if (message.command === "feedbackClicked") {
@@ -78,7 +77,8 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
             } else if (message.command === "openWalkthrough") {
                 this.openWalkthrough();
             } else if (message.command === "introDismissed") {
-                this.context.workspaceState.update("rendercv.hasSeenIntro", true);
+                await this.context.workspaceState.update("rendercv.hasSeenIntro", true);
+                this.postSidebarState();
             } else if (message.command === "introSetup") {
                 rcv.detectRenderCVCliPath(false).then((detected) => {
                     logger.info("RenderCV CLI path detection result:", detected);
@@ -105,10 +105,11 @@ class SuperCoolSidebarProvider implements vscode.WebviewViewProvider {
         logger.info("Reloaded CVs in the sidebar.");
     }
 
-    private postSidebarState(showIntro: boolean) {
+    private postSidebarState() {
+        const hasSeenIntro = this.context.workspaceState.get<boolean>("rendercv.hasSeenIntro", false);
         this.webviewView?.webview.postMessage({
             command: "init",
-            showIntro,
+            showIntro: !hasSeenIntro,
             hasDetectedCliPath: this.context.workspaceState.get<boolean>("rendercv.hasDetectedCliPath", false)
         });
         this.postCvList();

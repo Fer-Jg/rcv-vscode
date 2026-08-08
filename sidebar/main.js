@@ -169,11 +169,9 @@ document.getElementById("cvs-help-button").addEventListener("click", () => {
 });
 
 window.addEventListener("message", (event) => {
-    if (event.data.command === "init" && event.data.showIntro) {
-        document.getElementById("intro-view").style.display = "block";
-        document.getElementById("main-view").style.display = "none";
-    }
     if (event.data.command === "init") {
+        document.getElementById("intro-view").style.display = event.data.showIntro ? "block" : "none";
+        document.getElementById("main-view").style.display = event.data.showIntro ? "none" : "block";
         if(!event.data.hasDetectedCliPath){
             document.getElementById("intro-need-setup").style.display = "block";
             document.getElementById("intro-done-setup").style.display = "none";
