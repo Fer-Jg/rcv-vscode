@@ -180,7 +180,7 @@ export function filterCvs() {
 }
 
 export function openCvsHelp() {
-    vscode.env.openExternal(vscode.Uri.parse("https://your-docs-url.example.com"));
+    vscode.env.openExternal(vscode.Uri.parse("https://rcv-vscode.ferj.dev"));
 }
 
 export function newCvFromGlobal() {
