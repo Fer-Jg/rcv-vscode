@@ -1,6 +1,7 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "name": "rendercv-vscode",
+  "publisher": "ferjdev",
   "displayName": "RenderCV - VScode",
   "description": "RenderCV but in VSCode, for free.",
   "repository": {
@@ -13,7 +14,7 @@
   "license": "None :)",
   "homepage": "https://rcv-vscode.ferj.dev",
   "galleryBanner": {
-    "color": "#00ffaa",
+    "color": "#0b3847",
     "theme": "dark"
   },
   "icon": "media/icon.png",
